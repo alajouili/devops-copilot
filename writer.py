@@ -41,34 +41,34 @@ def extract_yaml(text: str) -> str | None:
 
 async def main():
     request = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REQUEST
-    print(f"📝 Demande : {request}\n")
+    print(f" Demande : {request}\n")
 
     server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
     async with stdio_client(server) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # ① L'agent travaille : ecrire → verifier → corriger
+            
             answer, tours, tokens = await run_agent(session, SYSTEM, request)
-            print(f"\n🤖 Reponse de l'agent ({tours} tours, {tokens} tokens au total) :\n\n{answer}")
+            print(f"\n Reponse de l'agent ({tours} tours, {tokens} tokens au total) :\n\n{answer}")
 
-            # ② On recupere le YAML et on l'enregistre
+            
             yaml_text = extract_yaml(answer)
             if not yaml_text:
-                print("\n❌ Aucun bloc ```yaml trouve dans la reponse.")
+                print("\nAucun bloc ```yaml trouve dans la reponse.")
                 return
             output = pathlib.Path("output/manifest.yaml")
             output.parent.mkdir(exist_ok=True)
             output.write_text(yaml_text + "\n")
-            print(f"\n💾 Manifest enregistre dans {output}")
+            print(f"\n Manifest enregistre dans {output}")
 
-            # ③ "Faire confiance, mais verifier" : NOTRE code reverifie le resultat final
-            print("\n🔎 Verification independante du manifest final :")
+            # Faire confiance, mais verifier" : NOTRE code reverifie le resultat final
+            print("\n Verification independante du manifest final :")
             for tool in ("validate_k8s_yaml", "scan_k8s_security"):
                 result = await session.call_tool(tool, {"yaml_text": yaml_text})
                 text = "\n".join(c.text for c in result.content if hasattr(c, "text"))
                 ok = text.startswith(("VALIDE", "SECURISE"))
-                print(f"   {'✅' if ok else '❌'} {tool}")
+                print(f"   {'bien' if ok else 'pas bien'} {tool}")
 
 
 asyncio.run(main())
