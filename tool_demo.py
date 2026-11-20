@@ -7,7 +7,7 @@ kind: Deployment
 metadata:
   name: web
 spec:
-  replicas: "3"
+  replicas: 3
   selector:
     matchLabels:
       app: web
@@ -20,7 +20,7 @@ spec:
         - name: web
           image: nginx:1.27
           ports:
-            - containerPort: "80"
+            - containerPort: 80
 """
 
 messages = [
