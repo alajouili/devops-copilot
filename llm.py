@@ -21,16 +21,24 @@ if os.getenv("GEMINI_API_KEY"):
     })
 
 
-def chat(messages, temperature=0.3):
-    """Envoie la conversation au premier fournisseur disponible.
-    Renvoie (réponse, nom du fournisseur, tokens utilisés)."""
+def complete(messages, tools=None, temperature=0.2):
+    """Appel brut : renvoie (message complet, fournisseur, tokens).
+    Le message peut contenir du texte OU des demandes d'outils (tool_calls)."""
     last_error = None
     for p in PROVIDERS:
         try:
-            r = p["client"].chat.completions.create(
-                model=p["model"], messages=messages, temperature=temperature)
-            return r.choices[0].message.content, p["name"], r.usage.total_tokens
-        except (RateLimitError, APIConnectionError, APIError) as e:
-            print(f"⚠️  {p['name']} indisponible ({type(e).__name__}), on essaie le suivant…")
+            kwargs = {"model": p["model"], "messages": messages, "temperature": temperature}
+            if tools:
+                kwargs["tools"] = tools
+            r = p["client"].chat.completions.create(**kwargs)
+            return r.choices[0].message, p["name"], r.usage.total_tokens
+        except (RateLimitError, APIConnectionError, AuthenticationError, APIError) as e:
+            print(f"⚠️  {p['name']} indisponible ({type(e).__name__}) : {e}")
             last_error = e
     raise RuntimeError(f"Aucun fournisseur disponible : {last_error}")
+
+
+def chat(messages, temperature=0.3):
+    """Version simple, pour du texte seulement (utilisée par chat.py)."""
+    message, provider, tokens = complete(messages, temperature=temperature)
+    return message.content, provider, tokens
