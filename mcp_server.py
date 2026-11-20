@@ -30,8 +30,12 @@ def validate_k8s_yaml(yaml_text: str) -> str:
 @mcp.tool(description="Analyse la SÉCURITÉ d'un manifest Kubernetes avec Trivy (mauvaises configurations : "
                       "conteneur root, privilèges, pas de limites de ressources). À utiliser pour un audit de sécurité.")
 def scan_k8s_security(yaml_text: str) -> str:
-    code, output = _run(["trivy", "config", "--quiet", "--severity", "HIGH,CRITICAL"], yaml_text)
-    return output or "Aucun problème HIGH ou CRITICAL trouvé."
+    code, output = _run(["trivy", "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL"], yaml_text)
+    if code == 0:
+        return "SÉCURISÉ\nAucun problème HIGH ou CRITICAL trouvé."
+    if code == 127:
+        return output                       # Trivy n'est pas installé
+    return "PROBLÈMES DÉTECTÉS\n" + output
 @mcp.tool()
 def count_k8s_resources(yaml_text: str) -> str:
     """Compte le nombre de ressources Kubernetes (documents séparés par ---) dans un YAML."""
