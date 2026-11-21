@@ -2,7 +2,7 @@
 import shutil
 import subprocess
 import tempfile
-
+from rag import search
 from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer("devops-tools")
@@ -42,6 +42,14 @@ def count_k8s_resources(yaml_text: str) -> str:
     """Compte le nombre de ressources Kubernetes (documents separes par ---) dans un YAML."""
     return f"{len([d for d in yaml_text.split('---') if d.strip()])} ressource(s)"
 
-
+@mcp.tool(description="Cherche dans la documentation OFFICIELLE et A JOUR de Kubernetes. "
+                      "A utiliser AVANT d'ecrire un manifest ou de recommander une fonctionnalite, "
+                      "pour verifier qu'elle existe encore et comment l'utiliser aujourd'hui.")
+def search_k8s_docs(question: str) -> str:
+    results = search(question, k=4)
+    if not results:
+        return "Aucun document trouve."
+    return "\n\n".join(f"[Source : {source} | distance {distance:.2f}]\n{content}"
+                       for source, content, distance in results)
 if __name__ == "__main__":
     mcp.run()   # transport "stdio" : le client lance ce programme et lui parle par l'entree/sortie standard

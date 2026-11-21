@@ -1,5 +1,6 @@
 """RAG : decouper des documents, les transformer en vecteurs, et chercher par le sens."""
 import os
+import sys
 import re
 import time
 
@@ -21,8 +22,7 @@ def embed(texts: list[str]) -> list[list[float]]:
             response = embedder.embeddings.create(model=EMBEDDING_MODEL, input=texts)
             return [item.embedding for item in response.data]
         except RateLimitError:
-            print("    Quota d'embeddings atteint, pause de 30 s")
-            time.sleep(30)
+                        print("  Quota d'embeddings atteint, pause de 30 s", file=sys.stderr)
     raise RuntimeError("Impossible de calculer les embeddings (quota).")
  
 
