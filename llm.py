@@ -8,6 +8,7 @@ from openai import (OpenAI, APIError, APIConnectionError, AuthenticationError,
                     BadRequestError, RateLimitError)
 
 load_dotenv()
+from langfuse.openai import OpenAI  # meme client, mais chaque appel LLM est trace dans Langfuse
 
 # Les fournisseurs, dans l'ordre de preference
 PROVIDERS = []

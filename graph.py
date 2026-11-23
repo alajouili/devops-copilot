@@ -12,6 +12,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from agent import run_agent
+from tracing import AGENT_NODES, traced
 from team import COST_SYSTEM, MAX_ESSAIS, PLANNER_SYSTEM, SECURITY_SYSTEM
 from writer import DEFAULT_REQUEST, TEAM_SYSTEM as WRITER_SYSTEM, extract_yaml
 
@@ -118,7 +119,7 @@ def build_graph(session, checkpointer=None):
     g = StateGraph(State)
     for name, fn in [("planner", planner), ("writer", writer), ("security", security),
                      ("cost", cost), ("approval", approval), ("save", save), ("echec", echec)]:
-        g.add_node(name, fn)
+        g.add_node(name, traced(name, fn) if name in AGENT_NODES else fn)
 
     g.add_edge(START, "planner")
     g.add_edge("planner", "writer")
