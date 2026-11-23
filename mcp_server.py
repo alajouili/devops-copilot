@@ -1,7 +1,10 @@
 
 import shutil
 import subprocess
+import yaml
 import tempfile
+import logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
 from rag import search
 from mcp.server.mcpserver import MCPServer
 
@@ -46,10 +49,54 @@ def count_k8s_resources(yaml_text: str) -> str:
                       "A utiliser AVANT d'ecrire un manifest ou de recommander une fonctionnalite, "
                       "pour verifier qu'elle existe encore et comment l'utiliser aujourd'hui.")
 def search_k8s_docs(question: str) -> str:
-    results = search(question, k=4)
+    results = search(question, k=3)
     if not results:
         return "Aucun document trouve."
     return "\n\n".join(f"[Source : {source} | distance {distance:.2f}]\n{content}"
                        for source, content, distance in results)
+
+# Hypotheses de prix (ordre de grandeur AWS on-demand, a adapter)
+PRICE_VCPU_HOUR = 0.04      # $ par vCPU et par heure
+PRICE_GB_HOUR = 0.005       # $ par Go de RAM et par heure
+HOURS_PER_MONTH = 730
+
+
+def _cpu(value) -> float:
+    """'250m'  0.25 ; '1'  1.0"""
+    value = str(value)
+    return float(value[:-1]) / 1000 if value.endswith("m") else float(value)
+
+
+def _memory_gb(value) -> float:
+    """'256Mi'  0.25 ; '1Gi'  1.0 ; '512M'  0.5"""
+    value = str(value)
+    units = {"Ki": 1 / 1024 ** 2, "Mi": 1 / 1024, "Gi": 1, "K": 1e-6, "M": 1e-3, "G": 1}
+    for unit, factor in units.items():
+        if value.endswith(unit):
+            return float(value[: -len(unit)]) * factor
+    return float(value) / 1024 ** 3
+
+
+@mcp.tool(description="Calcule les ressources demandees (CPU, memoire) d'un manifest Kubernetes "
+                      "et estime son cout mensuel. A utiliser pour toute question de cout.")
+def estimate_k8s_cost(yaml_text: str) -> str:
+    total_cpu = total_mem = 0.0
+    lines = []
+    for doc in yaml.safe_load_all(yaml_text):
+        if not doc or doc.get("kind") not in ("Deployment", "StatefulSet", "DaemonSet"):
+            continue
+        replicas = doc.get("spec", {}).get("replicas", 1)
+        containers = doc["spec"]["template"]["spec"].get("containers", [])
+        cpu = sum(_cpu(c.get("resources", {}).get("requests", {}).get("cpu", 0)) for c in containers)
+        mem = sum(_memory_gb(c.get("resources", {}).get("requests", {}).get("memory", 0)) for c in containers)
+        total_cpu += cpu * replicas
+        total_mem += mem * replicas
+        lines.append(f"- {doc['kind']} {doc['metadata']['name']} : {replicas} replica(s)  "
+                     f"{cpu:.2f} vCPU / {mem:.2f} Go")
+    monthly = (total_cpu * PRICE_VCPU_HOUR + total_mem * PRICE_GB_HOUR) * HOURS_PER_MONTH
+    lines.append(f"TOTAL demande : {total_cpu:.2f} vCPU, {total_mem:.2f} Go de RAM")
+    lines.append(f"CoUt estime : {monthly:.2f} $ par mois "
+                 f"(hypotheses : {PRICE_VCPU_HOUR} $/vCPU-h, {PRICE_GB_HOUR} $/Go-h, {HOURS_PER_MONTH} h/mois)")
+    return "\n".join(lines)
 if __name__ == "__main__":
     mcp.run()   # transport "stdio" : le client lance ce programme et lui parle par l'entree/sortie standard

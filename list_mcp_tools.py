@@ -12,8 +12,8 @@ async def main():
             await session.initialize()
             for tool in (await session.list_tools()).tools:
                 description = (tool.description or "").strip()
-                first_line = description.splitlines()[0] if description else "⚠️ AUCUNE DESCRIPTION"
-                print(f"🔧 {tool.name}\n   {first_line}\n   paramètres : {list(tool.input_schema['properties'])}\n")
+                first_line = description.splitlines()[0] if description else " AUCUNE DESCRIPTION"
+                print(f" {tool.name}\n   {first_line}\n   parametres : {list(tool.input_schema['properties'])}\n")
             result = await session.call_tool("validate_k8s_yaml", {"yaml_text": "apiVersion: v1\nkind: Pod\n"})
             print("Test d'appel :", result.content[0].text)
 

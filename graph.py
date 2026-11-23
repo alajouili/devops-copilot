@@ -13,7 +13,7 @@ from mcp.client.stdio import stdio_client
 
 from agent import run_agent
 from team import COST_SYSTEM, MAX_ESSAIS, PLANNER_SYSTEM, SECURITY_SYSTEM
-from writer import DEFAULT_REQUEST, SYSTEM as WRITER_SYSTEM, extract_yaml
+from writer import DEFAULT_REQUEST, TEAM_SYSTEM as WRITER_SYSTEM, extract_yaml
 
 
 
@@ -41,7 +41,7 @@ def title(name):
     print("\n" + "=" * 60 + f"\n[{name}]\n" + "=" * 60)
 
 
-def build_graph(session):
+def build_graph(session, checkpointer=None):
     async def planner(state):
         title("PLANNER")
         answer, _, _ = await run_agent(session, PLANNER_SYSTEM, state["request"], allowed=["search_k8s_docs"])
@@ -53,9 +53,7 @@ def build_graph(session):
         essai = state["essais"] + 1
         title(f"WRITER (essai {essai}/{MAX_ESSAIS})")
         task = (f"Demande : {state['request']}\n\n"
-                f"Plan du Planner :\n{json.dumps(state['plan'], indent=2, ensure_ascii=True)}\n\n"
-                "IMPORTANT : dans cette equipe tu as SEULEMENT search_k8s_docs et validate_k8s_yaml. "
-                "N'appelle PAS scan_k8s_security : l'agent Security s'en charge.")
+                f"Plan du Planner :\n{json.dumps(state['plan'], indent=2, ensure_ascii=True)}")
         if state.get("feedback"):
             task += f"\n\nL'agent Security a refuse la version precedente :\n{state['feedback']}\nCorrige ces problemes."
         answer, _, _ = await run_agent(session, WRITER_SYSTEM, task,
@@ -132,7 +130,7 @@ def build_graph(session):
     g.add_edge("save", END)
     g.add_edge("echec", END)
 
-    return g.compile(checkpointer=InMemorySaver())
+    return g.compile(checkpointer=checkpointer or InMemorySaver())
 
 
 async def main(request):
