@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>DevOps Copilot</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem;
+         background: #f5f6f8; color: #1f2328; }
+  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  textarea { width: 100%; height: 70px; font: inherit; box-sizing: border-box; }
+  button { font: inherit; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #888; cursor: pointer; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ok { background: #1a7f37; color: #fff; border-color: #1a7f37; }
+  .ko { background: #cf222e; color: #fff; border-color: #cf222e; }
+  .steps { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .step { padding: 0.3rem 0.8rem; border-radius: 999px; background: #eaeef2; }
+  .step.done { background: #dafbe1; }
+  .step.active { background: #fff8c5; font-weight: bold; }
+  pre { background: #0d1117; color: #e6edf3; padding: 0.8rem; border-radius: 6px;
+        overflow-x: auto; white-space: pre-wrap; }
+  .error { color: #cf222e; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>DevOps Copilot</h1>
+<p>Une equipe de 4 agents IA ecrit, verifie et chiffre vos manifests Kubernetes.</p>
+
+<div class="card">
+  <label for="request"><b>Votre demande</b></label>
+  <textarea id="request">Un Deployment nginx securise avec 3 replicas, et un Service ClusterIP qui expose le port 80 vers le port 8080 des pods.</textarea>
+  <p><button id="launch">Lancer la mission</button></p>
+  <p id="launch-error" class="error"></p>
+</div>
+
+<div id="mission" class="card hidden">
+  <p>Mission <b id="tid"></b> : <b id="status"></b></p>
+  <div class="steps">
+    <span class="step" id="s-planner">1. Planner</span>
+    <span class="step" id="s-writer">2. Writer</span>
+    <span class="step" id="s-security">3. Security</span>
+    <span class="step" id="s-cost">4. Cost</span>
+    <span class="step" id="s-approval">5. Approbation</span>
+  </div>
+  <p id="error" class="error"></p>
+</div>
+
+<div id="decision" class="card hidden">
+  <p><b>Les agents ont termine. Enregistrer ce manifest ?</b></p>
+  <button id="approve" class="ok">Approuver</button>
+  <button id="reject" class="ko">Refuser</button>
+</div>
+
+<div class="card hidden"><h3>Plan (Planner)</h3><pre id="plan"></pre></div>
+<div class="card hidden"><h3>Manifest (Writer)</h3><pre id="manifest"></pre></div>
+<div class="card hidden"><h3>Verdict (Security)</h3><pre id="verdict"></pre></div>
+<div class="card hidden"><h3>Cout (Cost)</h3><pre id="cout"></pre></div>
+
+<script>
+const STEPS = ["planner", "writer", "security", "cost", "approval"];
+const $ = (id) => document.getElementById(id);
+let timer = null;
+
+// Un seul endroit pour parler a l'API
+async function api(method, path, body) {
+  const r = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(r.status + " : " + (await r.text()));
+  return r.json();
+}
+
+// textContent (et jamais innerHTML) : la sortie d'un LLM n'est pas fiable,
+// on l'affiche comme du texte, elle ne peut pas injecter de HTML ou de script.
+function show(id, text) {
+  const box = $(id);
+  box.textContent = text || "";
+  box.parentElement.classList.toggle("hidden", !text);
+}
+
+function render(m) {
+  $("mission").classList.remove("hidden");
+  $("tid").textContent = m.thread_id;
+  $("status").textContent = m.status + (m.decision ? " (decision : " + m.decision + ")" : "");
+
+  const done = { planner: !!m.plan, writer: !!m.manifest, security: !!m.verdict,
+                 cost: !!m.cout, approval: !!m.decision };
+  const next = (m.etape_suivante || [])[0];
+  for (const s of STEPS) {
+    $("s-" + s).className = "step" + (done[s] ? " done" : "") + (s === next ? " active" : "");
+  }
+
+  show("plan", m.plan ? JSON.stringify(m.plan, null, 2) : "");
+  show("manifest", m.manifest);
+  show("verdict", m.verdict ? JSON.stringify(m.verdict, null, 2) : "");
+  show("cout", m.cout);
+  $("error").textContent = m.erreur || "";
+
+  $("decision").classList.toggle("hidden", m.status !== "en_attente_approbation");
+  if (m.status === "terminee" || m.status === "erreur") stopPolling();
+}
+
+async function refresh() {
+  try {
+    render(await api("GET", "/missions/" + location.hash.slice(1)));
+  } catch (e) {
+    $("error").textContent = e.message;
+    stopPolling();
+  }
+}
+
+function startPolling() { stopPolling(); refresh(); timer = setInterval(refresh, 3000); }
+function stopPolling() { if (timer) clearInterval(timer); timer = null; }
+
+$("launch").onclick = async () => {
+  $("launch").disabled = true;
+  $("launch-error").textContent = "";
+  try {
+    const m = await api("POST", "/missions", { request: $("request").value });
+    location.hash = m.thread_id;   // l'id de la mission est garde dans l'adresse de la page
+    startPolling();
+  } catch (e) {
+    $("launch-error").textContent = e.message;
+  } finally {
+    $("launch").disabled = false;
+  }
+};
+
+async function decide(value) {
+  $("decision").classList.add("hidden");
+  try {
+    await api("POST", "/missions/" + location.hash.slice(1) + "/decision", { decision: value });
+    startPolling();
+  } catch (e) {
+    $("error").textContent = e.message;
+  }
+}
+$("approve").onclick = () => decide("o");
+$("reject").onclick = () => decide("n");
+
+// Si l'adresse contient deja un id (#abc123), on reprend le suivi de cette mission
+if (location.hash.length > 1) startPolling();
+</script>
+</body>
+</html>

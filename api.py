@@ -102,3 +102,11 @@ async def decide(thread_id: str, body: DecisionIn):
         raise HTTPException(409, "Cette mission n'attend pas d'approbation")
     launch(thread_id, Command(resume=body.decision))
     return {"thread_id": thread_id, "status": "en_cours"}
+
+from fastapi.responses import FileResponse
+
+
+@app.get("/")
+async def home():
+    """La page web de DevOps Copilot."""
+    return FileResponse("static/index.html")
