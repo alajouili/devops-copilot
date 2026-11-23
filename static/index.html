@@ -2,64 +2,717 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DevOps Copilot</title>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  // Applique le theme avant le premier rendu (pas de flash clair -> sombre)
+  try {
+    const t = localStorage.getItem("dc.theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (_) {}
+</script>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem;
-         background: #f5f6f8; color: #1f2328; }
-  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
-  textarea { width: 100%; height: 70px; font: inherit; box-sizing: border-box; }
-  button { font: inherit; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #888; cursor: pointer; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .ok { background: #1a7f37; color: #fff; border-color: #1a7f37; }
-  .ko { background: #cf222e; color: #fff; border-color: #cf222e; }
-  .steps { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .step { padding: 0.3rem 0.8rem; border-radius: 999px; background: #eaeef2; }
-  .step.done { background: #dafbe1; }
-  .step.active { background: #fff8c5; font-weight: bold; }
-  pre { background: #0d1117; color: #e6edf3; padding: 0.8rem; border-radius: 6px;
-        overflow-x: auto; white-space: pre-wrap; }
-  .error { color: #cf222e; }
-  .hidden { display: none; }
+/* ============================== Tokens ============================== */
+:root {
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sidebar-w: 272px;
+  --radius: 14px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  --bg: #fbfaf8; --surface: #ffffff; --surface-2: #f5f3ef; --sidebar: #f4f2ee;
+  --hover: rgba(28, 25, 23, .05); --active: rgba(28, 25, 23, .085);
+  --text: #1c1917; --text-2: #57534e; --muted: #8a847c;
+  --border: #e8e4dd; --border-strong: #d9d3ca;
+  --accent: #5b5bd6; --accent-hover: #4b4bc6; --accent-soft: rgba(91, 91, 214, .10);
+  --accent-ring: rgba(91, 91, 214, .16); --accent-border: rgba(91, 91, 214, .45); --on-accent: #fff;
+  --success: #15803d; --success-soft: rgba(21, 128, 61, .10);
+  --warning: #b45309; --warning-soft: rgba(180, 83, 9, .10);
+  --danger: #c62828;  --danger-soft: rgba(198, 40, 40, .09);
+  --bubble: #efece6;
+  --code-bg: #f8f7f4; --code-head: #f1efea; --code-text: #24292f; --code-ln: #bab4ab;
+  --tok-key: #6d28d9; --tok-str: #0f7b4d; --tok-num: #b45309; --tok-com: #8a847c; --tok-bool: #c2410c; --tok-punct: #a39d94;
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, .05);
+  --shadow-md: 0 4px 16px rgba(28, 25, 23, .06), 0 1px 2px rgba(28, 25, 23, .04);
+  --shadow-lg: 0 10px 34px rgba(28, 25, 23, .09), 0 1px 3px rgba(28, 25, 23, .05);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18181b; --surface: #1f1f23; --surface-2: #26262b; --sidebar: #131316;
+    --hover: rgba(255, 255, 255, .05); --active: rgba(255, 255, 255, .085);
+    --text: #ececef; --text-2: #b4b4bc; --muted: #7f7f89;
+    --border: #2c2c32; --border-strong: #3a3a42;
+    --accent: #8b8cf8; --accent-hover: #a3a4fb; --accent-soft: rgba(139, 140, 248, .14);
+    --accent-ring: rgba(139, 140, 248, .20); --accent-border: rgba(139, 140, 248, .5); --on-accent: #111114;
+    --success: #4ade80; --success-soft: rgba(74, 222, 128, .12);
+    --warning: #fbbf24; --warning-soft: rgba(251, 191, 36, .12);
+    --danger: #f87171;  --danger-soft: rgba(248, 113, 113, .12);
+    --bubble: #2a2a30;
+    --code-bg: #131316; --code-head: #1a1a1e; --code-text: #e4e4e7; --code-ln: #4a4a54;
+    --tok-key: #c4b5fd; --tok-str: #86efac; --tok-num: #fcd34d; --tok-com: #6b6b76; --tok-bool: #fdba74; --tok-punct: #6b6b76;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .3);
+    --shadow-lg: 0 10px 34px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18181b; --surface: #1f1f23; --surface-2: #26262b; --sidebar: #131316;
+  --hover: rgba(255, 255, 255, .05); --active: rgba(255, 255, 255, .085);
+  --text: #ececef; --text-2: #b4b4bc; --muted: #7f7f89;
+  --border: #2c2c32; --border-strong: #3a3a42;
+  --accent: #8b8cf8; --accent-hover: #a3a4fb; --accent-soft: rgba(139, 140, 248, .14);
+  --accent-ring: rgba(139, 140, 248, .20); --accent-border: rgba(139, 140, 248, .5); --on-accent: #111114;
+  --success: #4ade80; --success-soft: rgba(74, 222, 128, .12);
+  --warning: #fbbf24; --warning-soft: rgba(251, 191, 36, .12);
+  --danger: #f87171;  --danger-soft: rgba(248, 113, 113, .12);
+  --bubble: #2a2a30;
+  --code-bg: #131316; --code-head: #1a1a1e; --code-text: #e4e4e7; --code-ln: #4a4a54;
+  --tok-key: #c4b5fd; --tok-str: #86efac; --tok-num: #fcd34d; --tok-com: #6b6b76; --tok-bool: #fdba74; --tok-punct: #6b6b76;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, .3), 0 1px 2px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 10px 34px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+
+/* ============================== Base ============================== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.6 var(--font); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+[hidden] { display: none !important; }
+.i { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8;
+     stroke-linecap: round; stroke-linejoin: round; }
+.i-sm { width: 15px; height: 15px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+::selection { background: var(--accent-ring); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+.icon-btn {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px;
+  color: var(--text-2); transition: background .15s, color .15s, transform .15s;
+}
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.icon-btn:active { transform: scale(.94); }
+
+/* ============================== Layout ============================== */
+.app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  width: var(--sidebar-w); flex: none; display: flex; flex-direction: column;
+  background: var(--sidebar); border-right: 1px solid var(--border);
+  transition: margin-left .28s var(--ease), transform .28s var(--ease);
+}
+.app.collapsed .sidebar { margin-left: calc(-1 * var(--sidebar-w)); }
+.side-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 12px 8px 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; }
+.logo {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, #6d6df0, #4343b8); box-shadow: 0 2px 8px rgba(91, 91, 214, .35);
+}
+.logo .i { width: 17px; height: 17px; stroke-width: 2; }
+
+.new-btn {
+  margin: 6px 12px 10px; display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border-radius: 11px; border: 1px solid var(--border); background: var(--surface);
+  font-weight: 500; font-size: 14px; box-shadow: var(--shadow-sm);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.new-btn:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+.new-btn:active { transform: scale(.985); }
+.new-btn kbd { margin-left: auto; }
+kbd {
+  font: 500 11px var(--font); color: var(--muted); padding: 1px 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+
+.search { margin: 0 12px 8px; position: relative; }
+.search .i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.search input {
+  width: 100%; font: inherit; font-size: 13.5px; color: var(--text); background: transparent;
+  border: 1px solid transparent; border-radius: 10px; padding: 7px 10px 7px 34px; outline: none;
+  transition: background .15s, border-color .15s;
+}
+.search input:hover { background: var(--hover); }
+.search input:focus { background: var(--surface); border-color: var(--border-strong); }
+.search input::placeholder { color: var(--muted); }
+
+.history { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+.h-group { margin-top: 14px; }
+.h-label { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 0 10px 4px; letter-spacing: .02em; }
+.h-item {
+  position: relative; display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 8px 10px; border-radius: 10px; font-size: 13.5px; color: var(--text-2);
+  transition: background .12s, color .12s;
+}
+.h-item:hover { background: var(--hover); color: var(--text); }
+.h-item.active { background: var(--active); color: var(--text); font-weight: 500; }
+.h-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-del {
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; color: var(--muted);
+  opacity: 0; transition: opacity .12s, background .12s, color .12s;
+}
+.h-item:hover .h-del, .h-item:focus-within .h-del { opacity: 1; }
+.h-del:hover { background: var(--hover); color: var(--danger); }
+@media (hover: none) { .h-del { opacity: .7; } }
+.h-empty { padding: 28px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.h-empty .i { width: 22px; height: 22px; margin-bottom: 6px; opacity: .7; }
+
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--muted); }
+.tone-accent  { --tone: var(--accent);  --tone-soft: var(--accent-soft); }
+.tone-success { --tone: var(--success); --tone-soft: var(--success-soft); }
+.tone-warning { --tone: var(--warning); --tone-soft: var(--warning-soft); }
+.tone-danger  { --tone: var(--danger);  --tone-soft: var(--danger-soft); }
+.tone-neutral { --tone: var(--muted);   --tone-soft: var(--hover); }
+.dot[class*="tone-"] { background: var(--tone); }
+.dot.live { animation: pulse 1.6s infinite; }
+
+.side-foot { padding: 10px 12px 14px; border-top: 1px solid var(--border); }
+.theme-switch {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px;
+  border-radius: 11px; background: var(--hover);
+}
+.theme-switch button {
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 0;
+  border-radius: 8px; font-size: 12.5px; color: var(--muted); transition: background .15s, color .15s, box-shadow .15s;
+}
+.theme-switch button:hover { color: var(--text); }
+.theme-switch button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.theme-switch .i { width: 14px; height: 14px; }
+.foot-note { margin-top: 10px; font-size: 11.5px; color: var(--muted); padding: 0 4px; }
+
+.scrim { display: none; }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  height: 56px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  border-bottom: 1px solid transparent; transition: border-color .2s, background .2s;
+}
+.topbar.scrolled { border-bottom-color: var(--border); }
+.top-title { min-width: 0; display: flex; align-items: center; gap: 10px; margin-left: 4px; }
+.top-title strong {
+  font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw;
+}
+.top-actions { margin-left: auto; display: flex; gap: 2px; }
+.app:not(.collapsed) #top-new { display: none; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; white-space: nowrap; color: var(--tone); background: var(--tone-soft);
+}
+.pill .dot { background: var(--tone); }
+
+/* ---------- Thread ---------- */
+.thread { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.column { max-width: 780px; margin: 0 auto; padding: 8px 24px 40px; }
+
+/* Welcome */
+.welcome { min-height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 32px 24px; }
+.welcome-inner { max-width: 720px; margin: 0 auto; width: 100%; animation: rise .5s var(--ease); }
+.hero-logo { width: 48px; height: 48px; border-radius: 14px; margin-bottom: 20px; }
+.hero-logo .i { width: 26px; height: 26px; }
+.welcome h1 { font-size: clamp(26px, 4vw, 34px); line-height: 1.15; letter-spacing: -.025em; font-weight: 600; margin: 0 0 10px; }
+.welcome h1 span { color: var(--muted); }
+.welcome p.lead { color: var(--text-2); margin: 0 0 28px; max-width: 560px; }
+.suggestions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.sugg {
+  text-align: left; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px;
+  border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
+  transition: border-color .18s, box-shadow .18s, transform .18s var(--ease);
+}
+.sugg:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.sugg .ic {
+  width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex: none;
+  background: var(--accent-soft); color: var(--accent);
+}
+.sugg b { display: block; font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.sugg small { display: block; color: var(--muted); font-size: 13px; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.team { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; color: var(--muted); font-size: 12.5px; }
+.team span.agent { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--hover); color: var(--text-2); }
+.team .i { width: 13px; height: 13px; }
+.team .arrow { opacity: .6; }
+
+/* Messages */
+.msg { animation: rise .4s var(--ease); }
+.msg-user { display: flex; justify-content: flex-end; margin: 20px 0 28px; }
+.bubble {
+  max-width: min(85%, 600px); padding: 11px 16px; border-radius: 20px 20px 6px 20px;
+  background: var(--bubble); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.msg-ai { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 14px; }
+.msg-ai .logo { width: 32px; height: 32px; border-radius: 10px; }
+.ai-head { display: flex; align-items: center; gap: 10px; height: 32px; margin-bottom: 8px; }
+.ai-head strong { font-weight: 600; }
+.ai-head .meta { color: var(--muted); font-size: 12.5px; }
+.ai-body > * + * { margin-top: 14px; }
+
+.live {
+  display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500;
+  background: linear-gradient(90deg, var(--muted) 0%, var(--text) 40%, var(--muted) 80%);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 2.2s linear infinite;
+}
+.typing { display: inline-flex; gap: 3px; }
+.typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+
+/* Pipeline */
+.pipeline {
+  list-style: none; margin: 0; padding: 16px 8px 14px; display: grid; grid-template-columns: repeat(5, 1fr);
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.step { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 0 4px; }
+.step::before { /* connecteur vers l'etape precedente */
+  content: ""; position: absolute; top: 18px; right: calc(50% + 24px); left: calc(-50% + 24px);
+  height: 2px; border-radius: 2px; background: var(--border); transition: background .4s;
+}
+.step:first-child::before { display: none; }
+.step.done::before, .step.failed::before, .step.active::before, .step.waiting::before { background: var(--accent-border); }
+.node {
+  position: relative; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface-2); color: var(--muted); border: 1px solid var(--border);
+  transition: background .3s, color .3s, border-color .3s;
+}
+.node .i { width: 17px; height: 17px; }
+.node .i.state { display: none; }
+.step.done .node { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.step.done .node .i.agent, .step.failed .node .i.agent, .step.error .node .i.agent { display: none; }
+.step.done .node .i.ok, .step.failed .node .i.ko, .step.error .node .i.ko { display: block; }
+.step.failed .node, .step.error .node { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.step.active .node { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.step.active .node::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid transparent; border-top-color: var(--accent); border-right-color: var(--accent);
+  animation: spin .9s linear infinite;
+}
+.step.waiting .node { background: var(--warning-soft); color: var(--warning); border-color: transparent; animation: ring 2s infinite; }
+.step.skipped .node { border-style: dashed; opacity: .6; }
+.step-name { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.step.pending .step-name, .step.skipped .step-name { color: var(--muted); font-weight: 500; }
+.step-state { font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+.step.active .step-state { color: var(--accent); }
+.step.waiting .step-state { color: var(--warning); }
+.step.failed .step-state, .step.error .step-state { color: var(--danger); }
+.step.done .step-state { color: var(--success); }
+
+/* Panels */
+.panel {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  box-shadow: var(--shadow-sm); overflow: hidden; animation: rise .4s var(--ease);
+}
+.panel > summary {
+  list-style: none; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px;
+  cursor: pointer; user-select: none; transition: background .15s;
+}
+.panel > summary::-webkit-details-marker { display: none; }
+.panel > summary:hover { background: var(--hover); }
+.p-icon {
+  width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none;
+  color: var(--tone, var(--accent)); background: var(--tone-soft, var(--accent-soft));
+}
+.p-icon .i { width: 16px; height: 16px; }
+.p-title { flex: 1; min-width: 0; }
+.p-title b { display: block; font-weight: 600; font-size: 14px; line-height: 1.3; }
+.p-title small { display: block; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--muted); transition: transform .25s var(--ease); }
+.panel[open] .chev { transform: rotate(180deg); }
+.p-body { padding: 4px 16px 16px; border-top: 1px solid var(--border); }
+.panel[open] .p-body { animation: fade .25s ease; }
+.ghost-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px;
+  font-size: 12.5px; font-weight: 500; color: var(--text-2); transition: background .15s, color .15s;
+}
+.ghost-btn:hover { background: var(--hover); color: var(--text); }
+.ghost-btn.copied { color: var(--success); }
+
+/* Plan */
+.plan-grid { display: grid; gap: 16px; padding-top: 12px; }
+.plan-label { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 4px 11px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--accent-soft); color: var(--accent); }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checklist li { display: flex; gap: 9px; align-items: flex-start; font-size: 14px; color: var(--text-2); }
+.checklist li .i { width: 15px; height: 15px; margin-top: 4px; color: var(--success); }
+.checklist.muted li .i { color: var(--muted); }
+.checklist.muted li { font-style: italic; }
+
+/* Code */
+.code { margin: 12px 0 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--code-bg); }
+.code-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 4px 14px; background: var(--code-head); border-bottom: 1px solid var(--border); }
+.code-head span { font: 500 12px var(--mono); color: var(--muted); }
+.code pre {
+  margin: 0; padding: 12px 0; overflow-x: auto; font: 13px/1.65 var(--mono); color: var(--code-text);
+  counter-reset: ln; max-height: 560px; tab-size: 2;
+}
+.code .line { display: block; padding: 0 16px 0 0; white-space: pre; min-height: 1.65em; }
+.code .line::before {
+  counter-increment: ln; content: counter(ln); display: inline-block; width: 3.2em; padding-right: 1.2em;
+  text-align: right; color: var(--code-ln); user-select: none;
+}
+.code .line:hover { background: var(--hover); }
+.t-key { color: var(--tok-key); } .t-str { color: var(--tok-str); } .t-num { color: var(--tok-num); }
+.t-com { color: var(--tok-com); font-style: italic; } .t-bool { color: var(--tok-bool); } .t-punct { color: var(--tok-punct); }
+pre.raw { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; background: var(--code-bg); border: 1px solid var(--border);
+  font: 12.5px/1.6 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Verdict */
+.callout { display: flex; gap: 12px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+  background: var(--tone-soft); color: var(--text); }
+.callout > .i { color: var(--tone); margin-top: 2px; }
+.callout b { color: var(--tone); }
+.issues { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: is; display: grid; gap: 8px; }
+.issues li { counter-increment: is; display: flex; gap: 10px; font-size: 14px; color: var(--text-2); }
+.issues li::before {
+  content: counter(is); flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+  font-size: 12px; font-weight: 600; background: var(--danger-soft); color: var(--danger); margin-top: 1px;
+}
+
+/* Rich text (cost) */
+.prose { padding-top: 12px; color: var(--text-2); }
+.prose p { margin: 0 0 10px; } .prose p:last-child { margin-bottom: 0; }
+.prose ul { margin: 0 0 10px; padding-left: 20px; } .prose li { margin: 3px 0; }
+.prose strong { color: var(--text); font-weight: 600; }
+.prose code { font: 12.5px var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--surface-2); color: var(--text); }
+.price { font-variant-numeric: tabular-nums; }
+
+/* Approval + outcome */
+.approval {
+  position: relative; padding: 18px; border-radius: 16px; border: 1px solid var(--accent-border);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 140%), var(--surface);
+  box-shadow: 0 0 0 4px var(--accent-ring); animation: rise .45s var(--ease);
+}
+.approval h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.approval h3 .i { color: var(--accent); }
+.approval p { margin: 0 0 16px; color: var(--text-2); font-size: 14px; }
+.approval p code { font: 12.5px var(--mono); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px;
+  border-radius: 11px; font-weight: 500; font-size: 14px;
+  transition: background .15s, border-color .15s, transform .12s, box-shadow .15s, opacity .15s;
+}
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn:disabled { opacity: .55; }
+.btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-outline { border: 1px solid var(--border-strong); background: var(--surface); }
+.btn-outline:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+
+.outcome { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 12px;
+  background: var(--tone-soft); font-size: 14px; animation: rise .4s var(--ease); }
+.outcome .i { color: var(--tone); }
+.outcome code { font: 12.5px var(--mono); }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+  background: var(--danger-soft); color: var(--danger); font-size: 14px; overflow-wrap: anywhere; }
+.alert .i { margin-top: 2px; }
+
+/* ---------- Composer ---------- */
+.composer-wrap { flex: none; padding: 0 24px max(14px, env(safe-area-inset-bottom)); position: relative; }
+.composer-wrap::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+.composer {
+  max-width: 780px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 22px; box-shadow: var(--shadow-lg); padding: 12px 12px 10px 18px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.composer:focus-within { border-color: var(--accent-border); box-shadow: 0 0 0 4px var(--accent-ring), var(--shadow-lg); }
+.composer textarea {
+  display: block; width: 100%; border: 0; outline: 0; resize: none; background: transparent; color: var(--text);
+  font: inherit; font-size: 15px; line-height: 1.55; min-height: 26px; max-height: 220px; padding: 2px 0 0;
+}
+.composer textarea::placeholder { color: var(--muted); }
+.composer-bar { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.composer-hint { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.composer-hint .i { width: 14px; height: 14px; }
+.composer-hint span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.send {
+  margin-left: auto; width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent); transition: background .15s, transform .12s, opacity .15s;
+}
+.send:hover:not(:disabled) { background: var(--accent-hover); }
+.send:active:not(:disabled) { transform: scale(.92); }
+.send:disabled { background: var(--border-strong); color: var(--surface); opacity: .8; }
+.send .i { stroke-width: 2.2; }
+.disclaimer { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+/* ---------- Toasts ---------- */
+.toasts { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 60; pointer-events: none; }
+.toast {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; font-size: 13.5px;
+  background: var(--text); color: var(--bg); box-shadow: var(--shadow-lg); max-width: min(92vw, 520px);
+  animation: toast-in .3s var(--ease);
+}
+.toast.err { background: var(--danger); color: #fff; }
+.toast.out { animation: toast-out .25s ease forwards; }
+
+/* ---------- Animations ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 var(--warning-soft); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; transform: translateX(-100%); box-shadow: var(--shadow-lg); margin-left: 0 !important; }
+  .app.drawer .sidebar { transform: none; }
+  .scrim { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .35);
+    opacity: 0; pointer-events: none; transition: opacity .25s; backdrop-filter: blur(2px); }
+  .app.drawer .scrim { opacity: 1; pointer-events: auto; }
+  #top-new { display: inline-grid !important; }
+  #side-close { display: inline-grid; }
+}
+@media (min-width: 861px) { #side-close { display: none; } }
+@media (max-width: 640px) {
+  .column { padding: 4px 16px 32px; }
+  .welcome { padding: 24px 16px; }
+  .composer-wrap { padding-left: 12px; padding-right: 12px; }
+  .suggestions { grid-template-columns: 1fr; }
+  .sugg:nth-child(n+3) { display: none; }
+  .msg-ai { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .msg-ai > .logo { display: none; }
+  .bubble { max-width: 92%; }
+  .pipeline { grid-template-columns: 1fr; padding: 12px 14px; gap: 0; }
+  .step { flex-direction: row; text-align: left; gap: 12px; padding: 6px 0; align-items: center; }
+  .step::before { top: auto; bottom: calc(50% + 20px); left: 17px; right: auto; width: 2px; height: 14px; }
+  .step-name { margin: 0; min-width: 70px; }
+  .step-state { margin-left: auto; }
+  .top-title strong { max-width: 40vw; }
+  .disclaimer { display: none; }
+  .toasts { bottom: 104px; }
+}
 </style>
 </head>
 <body>
-<h1>DevOps Copilot</h1>
-<p>Une equipe de 4 agents IA ecrit, verifie et chiffre vos manifests Kubernetes.</p>
+<div class="app" id="app">
 
-<div class="card">
-  <label for="request"><b>Votre demande</b></label>
-  <textarea id="request">Un Deployment nginx securise avec 3 replicas, et un Service ClusterIP qui expose le port 80 vers le port 8080 des pods.</textarea>
-  <p><button id="launch">Lancer la mission</button></p>
-  <p id="launch-error" class="error"></p>
+  <!-- ===================== Sidebar ===================== -->
+  <aside class="sidebar" id="sidebar" aria-label="Historique des missions">
+    <div class="side-head">
+      <div class="brand"><span class="logo" data-icon="cube"></span>DevOps Copilot</div>
+      <button class="icon-btn" id="side-close" aria-label="Fermer le menu" data-icon="x"></button>
+    </div>
+    <button class="new-btn" id="new-mission"><span data-icon="plus"></span>Nouvelle mission<kbd>Ctrl K</kbd></button>
+    <label class="search"><span class="sr">Rechercher</span><span data-icon="search" data-cls="i-sm"></span>
+      <input id="search" type="search" placeholder="Rechercher une mission" autocomplete="off">
+    </label>
+    <nav class="history" id="history"></nav>
+    <div class="side-foot">
+      <div class="theme-switch" role="group" aria-label="Theme">
+        <button data-theme-set="light" aria-pressed="false"><span data-icon="sun"></span>Clair</button>
+        <button data-theme-set="dark" aria-pressed="false"><span data-icon="moon"></span>Sombre</button>
+        <button data-theme-set="system" aria-pressed="false"><span data-icon="monitor"></span>Auto</button>
+      </div>
+      <div class="foot-note">Historique conservé dans ce navigateur.</div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ===================== Main ===================== -->
+  <main>
+    <header class="topbar" id="topbar">
+      <button class="icon-btn" id="toggle-side" aria-label="Afficher / masquer l'historique" data-icon="panel"></button>
+      <button class="icon-btn" id="top-new" aria-label="Nouvelle mission" data-icon="edit"></button>
+      <div class="top-title">
+        <strong id="top-title">Nouvelle mission</strong>
+        <span id="top-status" class="pill" hidden></span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="share" aria-label="Copier le lien de la mission" title="Copier le lien" data-icon="link" hidden></button>
+      </div>
+    </header>
+
+    <section class="thread" id="thread">
+      <!-- Accueil -->
+      <div class="welcome" id="welcome">
+        <div class="welcome-inner">
+          <div class="logo hero-logo" data-icon="cube"></div>
+          <h1>Que voulez-vous déployer&nbsp;?<br><span>Décrivez-le, l'équipe s'occupe du reste.</span></h1>
+          <p class="lead">Quatre agents IA écrivent, vérifient et chiffrent vos manifests Kubernetes. Rien n'est enregistré sans votre validation.</p>
+          <div class="suggestions" id="suggestions"></div>
+          <div class="team" aria-label="Pipeline des agents">
+            <span class="agent"><span data-icon="compass"></span>Planner</span><span class="arrow">→</span>
+            <span class="agent"><span data-icon="file"></span>Writer</span><span class="arrow">→</span>
+            <span class="agent"><span data-icon="shield"></span>Security</span><span class="arrow">→</span>
+            <span class="agent"><span data-icon="coins"></span>Cost</span><span class="arrow">→</span>
+            <span class="agent"><span data-icon="user"></span>Vous</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conversation (mission courante) -->
+      <div class="column" id="conversation" hidden>
+        <div class="msg msg-user" id="user-msg" hidden><div class="bubble" id="user-text"></div></div>
+
+        <div class="msg msg-ai">
+          <div class="logo" data-icon="cube"></div>
+          <div>
+            <div class="ai-head">
+              <strong>DevOps Copilot</strong>
+              <span class="pill" id="ai-status" hidden></span>
+              <span class="meta" id="ai-meta"></span>
+            </div>
+            <div class="ai-body">
+              <div class="live" id="live" aria-live="polite" hidden></div>
+              <ol class="pipeline" id="pipeline" aria-label="Progression"></ol>
+
+              <details class="panel" id="p-plan" open hidden>
+                <summary><span class="p-icon" data-icon="compass"></span>
+                  <span class="p-title"><b>Plan de travail</b><small id="plan-meta">Planner</small></span>
+                  <span class="chev" data-icon="chevron"></span></summary>
+                <div class="p-body" id="plan"></div>
+              </details>
+
+              <details class="panel" id="p-manifest" open hidden>
+                <summary><span class="p-icon" data-icon="file"></span>
+                  <span class="p-title"><b>Manifest Kubernetes</b><small id="manifest-meta">Writer</small></span>
+                  <span class="chev" data-icon="chevron"></span></summary>
+                <div class="p-body">
+                  <div class="code">
+                    <div class="code-head"><span>manifest.yaml</span>
+                      <button class="ghost-btn" id="copy-manifest"><span data-icon="copy" data-cls="i-sm"></span><span>Copier</span></button>
+                    </div>
+                    <pre><code id="manifest"></code></pre>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel" id="p-verdict" open hidden>
+                <summary><span class="p-icon" id="verdict-icon" data-icon="shield"></span>
+                  <span class="p-title"><b>Audit de sécurité</b><small id="verdict-meta">Security</small></span>
+                  <span class="chev" data-icon="chevron"></span></summary>
+                <div class="p-body" id="verdict"></div>
+              </details>
+
+              <details class="panel" id="p-cout" open hidden>
+                <summary><span class="p-icon tone-success" data-icon="coins"></span>
+                  <span class="p-title"><b>Estimation du coût</b><small id="cout-meta">Cost</small></span>
+                  <span class="chev" data-icon="chevron"></span></summary>
+                <div class="p-body"><div class="prose" id="cout"></div></div>
+              </details>
+
+              <div class="approval" id="decision" hidden>
+                <h3><span data-icon="user"></span>Votre validation est requise</h3>
+                <p>Les agents ont terminé. Enregistrer ce manifest dans <code>output/manifest.yaml</code>&nbsp;?</p>
+                <div class="actions">
+                  <button class="btn btn-primary" id="approve"><span data-icon="check" data-cls="i-sm"></span><span>Approuver et enregistrer</span></button>
+                  <button class="btn btn-outline" id="reject"><span data-icon="x" data-cls="i-sm"></span><span>Refuser</span></button>
+                </div>
+              </div>
+
+              <div class="outcome" id="outcome" hidden></div>
+              <div class="alert" id="error" role="alert" hidden><span data-icon="alert"></span><span id="error-text"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barre de saisie -->
+    <footer class="composer-wrap">
+      <form class="composer" id="composer">
+        <label for="request" class="sr">Votre demande</label>
+        <textarea id="request" rows="1" placeholder="Décrivez les ressources Kubernetes dont vous avez besoin…"></textarea>
+        <div class="composer-bar">
+          <div class="composer-hint"><span data-icon="sparkles"></span><span id="hint">Planner · Writer · Security · Cost</span></div>
+          <button class="send" id="launch" type="submit" aria-label="Lancer la mission" disabled data-icon="arrow-up"></button>
+        </div>
+      </form>
+      <div class="disclaimer">Entrée pour lancer · Maj + Entrée pour un saut de ligne · Vérifiez toujours un manifest avant de l'appliquer.</div>
+    </footer>
+  </main>
 </div>
-
-<div id="mission" class="card hidden">
-  <p>Mission <b id="tid"></b> : <b id="status"></b></p>
-  <div class="steps">
-    <span class="step" id="s-planner">1. Planner</span>
-    <span class="step" id="s-writer">2. Writer</span>
-    <span class="step" id="s-security">3. Security</span>
-    <span class="step" id="s-cost">4. Cost</span>
-    <span class="step" id="s-approval">5. Approbation</span>
-  </div>
-  <p id="error" class="error"></p>
-</div>
-
-<div id="decision" class="card hidden">
-  <p><b>Les agents ont termine. Enregistrer ce manifest ?</b></p>
-  <button id="approve" class="ok">Approuver</button>
-  <button id="reject" class="ko">Refuser</button>
-</div>
-
-<div class="card hidden"><h3>Plan (Planner)</h3><pre id="plan"></pre></div>
-<div class="card hidden"><h3>Manifest (Writer)</h3><pre id="manifest"></pre></div>
-<div class="card hidden"><h3>Verdict (Security)</h3><pre id="verdict"></pre></div>
-<div class="card hidden"><h3>Cout (Cost)</h3><pre id="cout"></pre></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script>
-const STEPS = ["planner", "writer", "security", "cost", "approval"];
+// ============================================================================
+// Icones (SVG statiques, ecrits ici : c'est le SEUL contenu injecte en HTML)
+// ============================================================================
+const SHIELD = '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>';
+const ICONS = {
+  cube: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  panel: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+  moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M10 12.5 8 14.5l2 2M14 12.5l2 2-2 2"/>',
+  shield: SHIELD,
+  "shield-ok": SHIELD + '<path d="m9 12 2 2 4-4"/>',
+  "shield-ko": SHIELD + '<path d="M12 8v4M12 16h.01"/>',
+  coins: '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4M16.71 13.88l.7.71-2.82 2.82"/>',
+  user: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+  trash: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',
+  "arrow-up": '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>',
+  layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
+};
+const svg = (name, cls = "") => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+function hydrateIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach((el) => {
+    el.insertAdjacentHTML("afterbegin", svg(el.dataset.icon, el.dataset.cls || ""));
+    el.removeAttribute("data-icon");
+  });
+}
+
+// ============================================================================
+// Utilitaires
+// ============================================================================
 const $ = (id) => document.getElementById(id);
+const MAX_ESSAIS = 3;   // doit correspondre a team.MAX_ESSAIS
 let timer = null;
+let current = null;     // id de la mission affichee
+let cache = {};         // derniere valeur rendue par bloc (evite de tout redessiner a chaque poll)
+let manifestText = "";  // manifest brut, pour le bouton Copier
+
+// Cree un element ; le texte passe TOUJOURS par textContent.
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function iconEl(name, cls) {
+  const s = el("span"); s.style.display = "contents";
+  s.innerHTML = svg(name, cls);   // icone statique, jamais de donnee
+  return s.firstChild;
+}
+const currentId = () => decodeURIComponent(location.hash.slice(1));
 
 // Un seul endroit pour parler a l'API
 async function api(method, path, body) {
@@ -68,80 +721,610 @@ async function api(method, path, body) {
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!r.ok) throw new Error(r.status + " : " + (await r.text()));
+  if (!r.ok) {
+    let msg = await r.text();
+    try { msg = JSON.parse(msg).detail || msg; } catch (_) {}
+    throw new Error(r.status + " : " + msg);
+  }
   return r.json();
 }
 
-// textContent (et jamais innerHTML) : la sortie d'un LLM n'est pas fiable,
-// on l'affiche comme du texte, elle ne peut pas injecter de HTML ou de script.
-function show(id, text) {
-  const box = $(id);
-  box.textContent = text || "";
-  box.parentElement.classList.toggle("hidden", !text);
+function toast(text, kind = "") {
+  const t = el("div", "toast " + kind);
+  t.append(iconEl(kind === "err" ? "alert" : "check", "i-sm"), el("span", "", text));
+  $("toasts").append(t);
+  setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 260); }, kind === "err" ? 5000 : 2200);
 }
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (_) {   // http non-localhost : pas d'API clipboard
+    const ta = el("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.append(ta); ta.select();
+    const ok = document.execCommand("copy"); ta.remove(); return ok;
+  }
+}
+
+// ============================================================================
+// Historique local (l'API n'a pas de liste des missions)
+// ============================================================================
+const HKEY = "dc.history.v1";
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HKEY)) || []; } catch (_) { return []; } }
+function saveHistory(list) { try { localStorage.setItem(HKEY, JSON.stringify(list.slice(0, 200))); } catch (_) {} }
+function upsertHistory(id, patch) {
+  const list = loadHistory();
+  let item = list.find((x) => x.id === id);
+  if (!item) { item = { id, request: "", createdAt: Date.now() }; list.unshift(item); }
+  const before = JSON.stringify(item);
+  for (const [k, v] of Object.entries(patch)) if (v != null && v !== "") item[k] = v;
+  if (JSON.stringify(item) !== before) { saveHistory(list); renderHistory(); }
+}
+function removeHistory(id) {
+  saveHistory(loadHistory().filter((x) => x.id !== id));
+  if (id === current) newMission(); else renderHistory();
+}
+
+function dayGroup(ts) {
+  const d = new Date(ts), now = new Date();
+  const start = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(now) - start(d)) / 864e5);
+  if (diff <= 0) return "Aujourd'hui";
+  if (diff === 1) return "Hier";
+  if (diff < 7) return "7 derniers jours";
+  if (diff < 30) return "30 derniers jours";
+  return "Plus ancien";
+}
+
+function renderHistory() {
+  const q = $("search").value.trim().toLowerCase();
+  const list = loadHistory().filter((x) => !q || (x.request || x.id).toLowerCase().includes(q));
+  const nav = $("history");
+  nav.replaceChildren();
+  if (!list.length) {
+    const empty = el("div", "h-empty");
+    empty.append(iconEl(q ? "search" : "inbox"), el("div", "", q ? "Aucun résultat" : "Vos missions apparaîtront ici"));
+    nav.append(empty);
+    return;
+  }
+  let group = null, box = null;
+  for (const item of list) {
+    const g = dayGroup(item.createdAt);
+    if (g !== group) {
+      group = g; box = el("div", "h-group");
+      box.append(el("div", "h-label", g)); nav.append(box);
+    }
+    const a = el("a", "h-item" + (item.id === current ? " active" : ""));
+    a.href = "#" + encodeURIComponent(item.id);
+    if (item.id === current) a.setAttribute("aria-current", "page");
+    const o = item.outcome || { tone: "neutral" };
+    const dot = el("span", "dot tone-" + o.tone + (o.live ? " live" : ""));
+    dot.title = o.label || "";
+    const del = el("button", "h-del");
+    del.setAttribute("aria-label", "Retirer de l'historique"); del.title = "Retirer de l'historique";
+    del.append(iconEl("trash", "i-sm"));
+    del.onclick = (e) => { e.preventDefault(); e.stopPropagation(); removeHistory(item.id); };
+    a.append(dot, el("span", "h-title", item.request || "Mission " + item.id), del);
+    a.addEventListener("click", () => closeDrawer());
+    box.append(a);
+  }
+}
+
+// ============================================================================
+// Modele : statut, etapes
+// ============================================================================
+const STEPS = [
+  { id: "planner",  name: "Planner",    icon: "compass", live: "Le Planner analyse votre demande" },
+  { id: "writer",   name: "Writer",     icon: "file",    live: "Le Writer rédige le manifest" },
+  { id: "security", name: "Security",   icon: "shield",  live: "Security audite le manifest" },
+  { id: "cost",     name: "Cost",       icon: "coins",   live: "Cost estime le coût mensuel" },
+  { id: "approval", name: "Validation", icon: "user",    live: "" },
+];
+
+function outcome(m) {
+  if (m.status === "erreur") return { label: "Erreur", tone: "danger" };
+  if (m.status === "en_cours") return { label: "En cours", tone: "accent", live: true };
+  if (m.status === "en_attente_approbation") return { label: "Validation requise", tone: "warning", live: true };
+  if (m.decision) return m.decision.startsWith("o")
+    ? { label: "Enregistrée", tone: "success" } : { label: "Refusée", tone: "neutral" };
+  if (m.verdict && m.verdict.approuve !== true) return { label: "Échec sécurité", tone: "danger" };
+  return { label: "Terminée", tone: "success" };
+}
+
+function stepStates(m) {
+  const next = (m.etape_suivante || [])[0];
+  const running = m.status === "en_cours", err = m.status === "erreur";
+  const refused = !!m.verdict && m.verdict.approuve !== true;
+  const ended = m.status === "terminee";
+  const has = { planner: !!m.plan, writer: !!m.manifest, security: !!m.verdict, cost: !!m.cout, approval: !!m.decision };
+  const states = {};
+  for (const { id } of STEPS) {
+    const isNext = next === id || (!next && id === "planner" && !has.planner);
+    if ((running || err) && isNext) states[id] = err ? "error" : "active";
+    else if (id === "approval" && m.status === "en_attente_approbation") states[id] = "waiting";
+    else if (id === "security" && refused) states[id] = "failed";
+    else if (has[id]) states[id] = "done";
+    else if (ended || err) states[id] = "skipped";
+    else states[id] = "pending";
+  }
+  return states;
+}
+
+function stepLabel(id, state, m) {
+  const essai = (m.essais || 0) + 1;
+  switch (state) {
+    case "active":  return id === "writer" ? `Essai ${Math.min(essai, MAX_ESSAIS)}/${MAX_ESSAIS}` : "En cours…";
+    case "waiting": return "À vous";
+    case "error":   return "Erreur";
+    case "skipped": return "Ignoré";
+    case "pending": return "En attente";
+    case "failed":  return m.status === "en_cours" ? "Refusé · correction" : "Refusé";
+    case "done":
+      if (id === "writer" && m.essais > 1) return `OK · ${m.essais} essais`;
+      if (id === "approval") return m.decision.startsWith("o") ? "Approuvé" : "Refusé";
+      if (id === "security") return "Approuvé";
+      return "Terminé";
+  }
+}
+
+// ============================================================================
+// Rendu
+// ============================================================================
+function buildPipeline() {
+  const ol = $("pipeline");
+  ol.replaceChildren();
+  for (const s of STEPS) {
+    const li = el("li", "step pending"); li.id = "s-" + s.id;
+    const node = el("span", "node");
+    node.append(iconEl(s.icon, "agent"), iconEl("check", "state ok"), iconEl("x", "state ko"));
+    li.append(node, el("span", "step-name", s.name), el("span", "step-state", "En attente"));
+    ol.append(li);
+  }
+}
+
+function setPill(pill, o) {
+  pill.hidden = !o;
+  if (!o) return;
+  pill.className = "pill tone-" + o.tone;
+  pill.replaceChildren(el("span", "dot" + (o.live ? " live" : "")), document.createTextNode(o.label));
+}
+
+// N'execute fn que si la valeur a change depuis le dernier rendu
+function changed(key, value) {
+  const s = JSON.stringify(value ?? null);
+  if (cache[key] === s) return false;
+  cache[key] = s; return true;
+}
+
+// Texte riche minimal : paragraphes, listes, **gras**, `code` — construit en DOM, jamais en innerHTML.
+function inline(parent, text) {
+  for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)) {
+    if (!part) continue;
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) parent.append(el("strong", "", part.slice(2, -2)));
+    else if (part.startsWith("`") && part.endsWith("`") && part.length > 2) parent.append(el("code", "", part.slice(1, -1)));
+    else parent.append(document.createTextNode(part));
+  }
+}
+function richText(box, text) {
+  box.replaceChildren();
+  let list = null, para = null;
+  for (const raw of String(text).split("\n")) {
+    const line = raw.trim();
+    const bullet = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+    if (!line) { list = para = null; continue; }
+    if (bullet) {
+      if (!list) { list = el("ul"); box.append(list); para = null; }
+      const li = el("li"); inline(li, bullet[1]); list.append(li);
+    } else {
+      list = null;
+      if (!para) { para = el("p"); box.append(para); } else para.append(el("br"));
+      inline(para, line.replace(/^#+\s*/, ""));
+    }
+  }
+}
+
+// Coloration YAML ligne par ligne (spans + textContent)
+function yamlLine(line) {
+  const span = el("span", "line");
+  const push = (t, cls) => { if (t) span.append(cls ? el("span", "t-" + cls, t) : document.createTextNode(t)); };
+  if (/^\s*#/.test(line)) { push(line, "com"); return span; }
+  if (/^\s*(---|\.\.\.)\s*$/.test(line)) { push(line, "punct"); return span; }
+  let rest;
+  const kv = line.match(/^(\s*)(-\s+)?([^\s#'"\-][^:#]*?|"[^"]*"|'[^']*')(:)(\s+|$)(.*)$/);
+  if (kv) { push(kv[1]); push(kv[2], "punct"); push(kv[3], "key"); push(kv[4], "punct"); push(kv[5]); rest = kv[6]; }
+  else {
+    const item = line.match(/^(\s*)(-\s*)(.*)$/);
+    if (!item) { push(line, line.trim() ? "str" : null); return span; }
+    push(item[1]); push(item[2], "punct"); rest = item[3];
+  }
+  const m = rest.match(/^(.*?)(\s+#.*)?$/);
+  const val = m[1];
+  if (/^(true|false|null|~|yes|no)$/i.test(val)) push(val, "bool");
+  else if (/^-?\d+(\.\d+)?([a-zA-Z]{1,3})?$/.test(val)) push(val, "num");
+  else if (/^[|>][-+]?$/.test(val) || /^[\[\]{}]$/.test(val)) push(val, "punct");
+  else push(val, "str");
+  push(m[2], "com");
+  return span;
+}
+
+const PLAN_LABELS = { ressources: "Ressources", exigences: "Exigences", securite: "Sécurité", hypotheses: "Hypothèses", note: "Note" };
+function renderPlan(plan) {
+  const box = $("plan");
+  box.replaceChildren();
+  const grid = el("div", "plan-grid");
+  for (const [key, val] of Object.entries(plan)) {
+    const sec = el("div");
+    sec.append(el("div", "plan-label", PLAN_LABELS[key] || key));
+    if (Array.isArray(val) && key === "ressources") {
+      const chips = el("div", "chips");
+      val.forEach((v) => chips.append(el("span", "chip", typeof v === "string" ? v : JSON.stringify(v))));
+      sec.append(chips);
+    } else if (Array.isArray(val)) {
+      const ul = el("ul", "checklist" + (key === "hypotheses" ? " muted" : ""));
+      val.forEach((v) => {
+        const li = el("li");
+        li.append(iconEl(key === "hypotheses" ? "alert" : key === "securite" ? "shield-ok" : "check"),
+                  el("span", "", typeof v === "string" ? v : JSON.stringify(v)));
+        ul.append(li);
+      });
+      sec.append(ul);
+    } else if (typeof val === "string") {
+      const p = el("div", "prose"); p.style.paddingTop = "0"; richText(p, val); sec.append(p);
+    } else {
+      sec.append(el("pre", "raw", JSON.stringify(val, null, 2)));
+    }
+    grid.append(sec);
+  }
+  box.append(grid);
+  const n = Array.isArray(plan.ressources) ? plan.ressources.length : 0;
+  $("plan-meta").textContent = n ? `Planner · ${n} ressource${n > 1 ? "s" : ""}` : "Planner";
+}
+
+function renderManifest(text, m) {
+  manifestText = text;
+  const code = $("manifest");
+  code.replaceChildren(...text.replace(/\n$/, "").split("\n").map(yamlLine));
+  const lines = text.split("\n").length;
+  $("manifest-meta").textContent = `Writer · ${lines} lignes` + (m.essais > 1 ? ` · version ${m.essais}` : "");
+}
+
+function renderVerdict(v) {
+  const ok = v.approuve === true;
+  const issues = Array.isArray(v.problemes) ? v.problemes : [];
+  const panel = $("p-verdict");
+  panel.querySelector(".p-icon").className = "p-icon tone-" + (ok ? "success" : "danger");
+  panel.querySelector(".p-icon").replaceChildren(iconEl(ok ? "shield-ok" : "shield-ko"));
+  $("verdict-meta").textContent = ok ? "Security · Approuvé"
+    : `Security · Refusé${issues.length ? ` · ${issues.length} problème${issues.length > 1 ? "s" : ""}` : ""}`;
+
+  const box = $("verdict");
+  box.replaceChildren();
+  const call = el("div", "callout tone-" + (ok ? "success" : "danger"));
+  const txt = el("div");
+  txt.append(el("b", "", ok ? "Manifest approuvé. " : "Manifest refusé. "), document.createTextNode(v.resume || ""));
+  call.append(iconEl(ok ? "shield-ok" : "shield-ko"), txt);
+  box.append(call);
+  if (issues.length) {
+    const ol = el("ol", "issues");
+    issues.forEach((p) => ol.append(el("li", "", typeof p === "string" ? p : JSON.stringify(p))));
+    box.append(ol);
+  }
+  const extra = Object.fromEntries(Object.entries(v).filter(([k]) => !["approuve", "problemes", "resume"].includes(k)));
+  if (Object.keys(extra).length) box.append(el("pre", "raw", JSON.stringify(extra, null, 2)));
+}
+
+function renderCost(text) {
+  richText($("cout"), text);
+  const price = String(text).match(/(?:[$€]\s?\d[\d\s.,]*\d|\d[\d\s.,]*\s?(?:\$|€|USD|EUR|dollars?|euros?)(?![a-z]))/i);
+  $("cout-meta").textContent = price ? `Cost · ≈ ${price[0].trim()} / mois` : "Cost";
+}
+
+function showPanel(id, visible) { $(id).hidden = !visible; }
 
 function render(m) {
-  $("mission").classList.remove("hidden");
-  $("tid").textContent = m.thread_id;
-  $("status").textContent = m.status + (m.decision ? " (decision : " + m.decision + ")" : "");
+  const thread = $("thread");
+  const nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 160;
 
-  const done = { planner: !!m.plan, writer: !!m.manifest, security: !!m.verdict,
-                 cost: !!m.cout, approval: !!m.decision };
-  const next = (m.etape_suivante || [])[0];
-  for (const s of STEPS) {
-    $("s-" + s).className = "step" + (done[s] ? " done" : "") + (s === next ? " active" : "");
+  // Demande (bulle utilisateur) + titre
+  const hist = loadHistory().find((x) => x.id === m.thread_id) || {};
+  const request = m.request || hist.request || "";
+  if (changed("request", request)) {
+    $("user-msg").hidden = !request;
+    $("user-text").textContent = request;
+    $("top-title").textContent = request || "Mission " + m.thread_id;
+    document.title = (request ? request.slice(0, 48) + (request.length > 48 ? "…" : "") : "Mission " + m.thread_id) + " · DevOps Copilot";
   }
 
-  show("plan", m.plan ? JSON.stringify(m.plan, null, 2) : "");
-  show("manifest", m.manifest);
-  show("verdict", m.verdict ? JSON.stringify(m.verdict, null, 2) : "");
-  show("cout", m.cout);
-  $("error").textContent = m.erreur || "";
+  // Statut
+  const o = outcome(m);
+  setPill($("top-status"), o);
+  setPill($("ai-status"), o);
+  $("ai-meta").textContent = "Mission " + m.thread_id;
+  upsertHistory(m.thread_id, { request, outcome: o });
 
-  $("decision").classList.toggle("hidden", m.status !== "en_attente_approbation");
+  // Pipeline
+  const states = stepStates(m);
+  for (const s of STEPS) {
+    const li = $("s-" + s.id);
+    li.className = "step " + states[s.id];
+    li.querySelector(".step-state").textContent = stepLabel(s.id, states[s.id], m);
+  }
+
+  // Ligne "en direct"
+  const activeStep = STEPS.find((s) => states[s.id] === "active");
+  const next = (m.etape_suivante || [])[0];
+  const liveText = m.status !== "en_cours" ? ""
+    : activeStep ? activeStep.live + (activeStep.id === "writer" && m.essais > 0 ? ` (essai ${m.essais + 1}/${MAX_ESSAIS}, corrections de Security)` : "")
+    : next === "save" ? "Enregistrement du manifest" : "Les agents travaillent";
+  if (changed("live", liveText)) {
+    $("live").hidden = !liveText;
+    $("live").replaceChildren();
+    if (liveText) {
+      const dots = el("span", "typing"); dots.append(el("i"), el("i"), el("i"));
+      $("live").append(dots, el("span", "", liveText + "…"));
+    }
+  }
+
+  // Blocs de resultat (textContent uniquement : la sortie d'un LLM n'est pas fiable)
+  if (changed("plan", m.plan)) { showPanel("p-plan", !!m.plan); if (m.plan) renderPlan(m.plan); }
+  if (changed("manifest", [m.manifest, m.essais])) { showPanel("p-manifest", !!m.manifest); if (m.manifest) renderManifest(m.manifest, m); }
+  if (changed("verdict", m.verdict)) { showPanel("p-verdict", !!m.verdict); if (m.verdict) renderVerdict(m.verdict); }
+  if (changed("cout", m.cout)) { showPanel("p-cout", !!m.cout); if (m.cout) renderCost(m.cout); }
+
+  // Validation humaine
+  const waiting = m.status === "en_attente_approbation";
+  if ($("decision").hidden === waiting) setDecisionBusy(null);
+  $("decision").hidden = !waiting;
+
+  // Resultat final
+  renderOutcome(m);
+
+  // Erreur
+  $("error").hidden = !m.erreur;
+  $("error-text").textContent = m.erreur || "";
+
   if (m.status === "terminee" || m.status === "erreur") stopPolling();
+  if (nearBottom) thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
 }
 
+function renderOutcome(m) {
+  const box = $("outcome");
+  let tone = null, icon = null, parts = null;
+  if (m.status === "terminee" && m.decision) {
+    if (m.decision.startsWith("o")) {
+      tone = "success"; icon = "save";
+      parts = ["Manifest enregistré dans ", ["code", "output/manifest.yaml"], " avec le rapport ", ["code", "output/rapport.md"], "."];
+    } else {
+      tone = "neutral"; icon = "x"; parts = ["Mission refusée : rien n'a été enregistré."];
+    }
+  } else if (m.status === "terminee" && m.verdict && m.verdict.approuve !== true) {
+    tone = "danger"; icon = "shield-ko";
+    parts = [`Échec : Security a refusé ${m.essais || MAX_ESSAIS} versions du manifest. Reformulez la demande et relancez.`];
+  }
+  if (!changed("outcome", [tone, parts])) return;
+  box.hidden = !tone;
+  if (!tone) return;
+  box.className = "outcome tone-" + tone;
+  const txt = el("div");
+  parts.forEach((p) => txt.append(Array.isArray(p) ? el(p[0], "", p[1]) : document.createTextNode(p)));
+  box.replaceChildren(iconEl(icon), txt);
+}
+
+// ============================================================================
+// Navigation / polling
+// ============================================================================
 async function refresh() {
+  const id = current;
   try {
-    render(await api("GET", "/missions/" + location.hash.slice(1)));
+    const m = await api("GET", "/missions/" + encodeURIComponent(id));
+    if (id === current) render(m);
   } catch (e) {
-    $("error").textContent = e.message;
+    if (id !== current) return;
+    $("error").hidden = false;
+    $("error-text").textContent = e.message.startsWith("404") ? "Mission introuvable (" + id + ")." : e.message;
+    $("live").hidden = true;
     stopPolling();
   }
 }
-
 function startPolling() { stopPolling(); refresh(); timer = setInterval(refresh, 3000); }
 function stopPolling() { if (timer) clearInterval(timer); timer = null; }
 
-$("launch").onclick = async () => {
-  $("launch").disabled = true;
-  $("launch-error").textContent = "";
-  try {
-    const m = await api("POST", "/missions", { request: $("request").value });
-    location.hash = m.thread_id;   // l'id de la mission est garde dans l'adresse de la page
-    startPolling();
-  } catch (e) {
-    $("launch-error").textContent = e.message;
-  } finally {
-    $("launch").disabled = false;
-  }
-};
+function resetConversation() {
+  cache = {};
+  buildPipeline();
+  ["p-plan", "p-manifest", "p-verdict", "p-cout", "decision", "outcome", "error"].forEach((id) => ($(id).hidden = true));
+  ["p-plan", "p-manifest", "p-verdict", "p-cout"].forEach((id) => ($(id).open = true));
+  setPill($("ai-status"), null);
+  $("ai-meta").textContent = "";
+}
 
-async function decide(value) {
-  $("decision").classList.add("hidden");
+function openMission(id) {
+  current = id;
+  resetConversation();
+  const hist = loadHistory().find((x) => x.id === id);
+  $("user-msg").hidden = !(hist && hist.request);
+  $("user-text").textContent = (hist && hist.request) || "";
+  $("top-title").textContent = (hist && hist.request) || "Mission " + id;
+  setPill($("top-status"), { label: "Chargement", tone: "neutral" });
+  $("live").hidden = false;
+  $("live").replaceChildren(el("span", "", "Chargement de la mission…"));
+  $("welcome").hidden = true;
+  $("conversation").hidden = false;
+  $("share").hidden = false;
+  $("thread").scrollTop = 0;
+  startPolling();
+}
+
+function showWelcome() {
+  current = null;
+  stopPolling();
+  $("welcome").hidden = false;
+  $("conversation").hidden = true;
+  $("share").hidden = true;
+  $("top-title").textContent = "Nouvelle mission";
+  setPill($("top-status"), null);
+  document.title = "DevOps Copilot";
+}
+
+function route() {
+  const id = currentId();
+  if (id) { if (id !== current) openMission(id); }
+  else showWelcome();
+  renderHistory();
+}
+
+function newMission() {
+  history.pushState(null, "", location.pathname + location.search);
+  route();
+  closeDrawer();
+  $("request").focus();
+}
+
+// ============================================================================
+// Actions
+// ============================================================================
+async function launch(e) {
+  e && e.preventDefault();
+  const request = $("request").value.trim();
+  if (!request || launching) return;
+  setLaunching(true);
   try {
-    await api("POST", "/missions/" + location.hash.slice(1) + "/decision", { decision: value });
-    startPolling();
-  } catch (e) {
-    $("error").textContent = e.message;
+    const m = await api("POST", "/missions", { request });
+    upsertHistory(m.thread_id, { request, createdAt: Date.now(), outcome: { label: "En cours", tone: "accent", live: true } });
+    $("request").value = ""; autosize();
+    location.hash = m.thread_id;   // l'id de la mission est garde dans l'adresse de la page
+  } catch (err) {
+    toast("Impossible de lancer la mission — " + err.message, "err");
+  } finally {
+    setLaunching(false);
   }
 }
+let launching = false;
+function setLaunching(on) {
+  launching = on;
+  const b = $("launch");
+  b.replaceChildren(on ? el("span", "spinner") : iconEl("arrow-up"));
+  updateSend();
+}
+function updateSend() { $("launch").disabled = launching || !$("request").value.trim(); }
+
+function setDecisionBusy(which) {
+  for (const id of ["approve", "reject"]) {
+    const b = $(id);
+    b.disabled = !!which;
+    const ic = b.firstElementChild;
+    if (id === which) ic.replaceWith(el("span", "spinner"));
+    else if (ic.classList.contains("spinner")) ic.replaceWith(iconEl(id === "approve" ? "check" : "x", "i-sm"));
+  }
+}
+
+async function decide(value) {
+  const id = current;
+  setDecisionBusy(value === "o" ? "approve" : "reject");
+  try {
+    await api("POST", "/missions/" + encodeURIComponent(id) + "/decision", { decision: value });
+    $("decision").hidden = true;
+    toast(value === "o" ? "Manifest approuvé — enregistrement…" : "Mission refusée");
+    startPolling();
+  } catch (e) {
+    setDecisionBusy(null);
+    $("error").hidden = false;
+    $("error-text").textContent = e.message;
+  }
+}
+
+function autosize() {
+  const ta = $("request");
+  ta.style.height = "auto";
+  ta.style.height = Math.min(ta.scrollHeight, 220) + "px";
+  updateSend();
+}
+
+// ---------- Theme ----------
+function applyTheme(t) {
+  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("dc.theme", t); } catch (_) {}
+  document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === t)));
+}
+
+// ---------- Sidebar ----------
+const mobile = () => matchMedia("(max-width: 860px)").matches;
+function closeDrawer() { $("app").classList.remove("drawer"); }
+function toggleSidebar() {
+  if (mobile()) { $("app").classList.toggle("drawer"); return; }
+  const c = $("app").classList.toggle("collapsed");
+  try { localStorage.setItem("dc.sidebar", c ? "collapsed" : "open"); } catch (_) {}
+}
+
+// ============================================================================
+// Suggestions
+// ============================================================================
+const SUGGESTIONS = [
+  { icon: "layers", title: "Deployment nginx sécurisé",
+    text: "Un Deployment nginx securise avec 3 replicas, et un Service ClusterIP qui expose le port 80 vers le port 8080 des pods." },
+  { icon: "clock", title: "CronJob de sauvegarde",
+    text: "Un CronJob qui lance chaque nuit a 2h une sauvegarde PostgreSQL avec l'image postgres:16, avec des limites CPU et memoire." },
+  { icon: "lock", title: "NetworkPolicy restrictive",
+    text: "Une NetworkPolicy qui n'autorise que le trafic entrant depuis les pods app=frontend vers les pods app=api sur le port 8080." },
+  { icon: "database", title: "Cache Redis",
+    text: "Un Deployment redis:7.2 avec 2 replicas, des requests et limits adaptees, et un Service ClusterIP sur le port 6379." },
+];
+function renderSuggestions() {
+  const box = $("suggestions");
+  for (const s of SUGGESTIONS) {
+    const b = el("button", "sugg"); b.type = "button";
+    const ic = el("span", "ic"); ic.append(iconEl(s.icon));
+    const txt = el("span"); txt.append(el("b", "", s.title), el("small", "", s.text));
+    b.append(ic, txt);
+    b.onclick = () => { const ta = $("request"); ta.value = s.text; autosize(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
+    box.append(b);
+  }
+}
+
+// ============================================================================
+// Initialisation
+// ============================================================================
+hydrateIcons();
+renderSuggestions();
+buildPipeline();
+try {
+  applyTheme(localStorage.getItem("dc.theme") || "system");
+  if (localStorage.getItem("dc.sidebar") === "collapsed") $("app").classList.add("collapsed");
+} catch (_) { applyTheme("system"); }
+
+$("composer").addEventListener("submit", launch);
+$("request").addEventListener("input", autosize);
+$("request").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); launch(); }
+});
 $("approve").onclick = () => decide("o");
 $("reject").onclick = () => decide("n");
+$("new-mission").onclick = newMission;
+$("top-new").onclick = newMission;
+$("toggle-side").onclick = toggleSidebar;
+$("side-close").onclick = closeDrawer;
+$("scrim").onclick = closeDrawer;
+$("search").addEventListener("input", renderHistory);
+$("share").onclick = async () => { if (await copyText(location.href)) toast("Lien de la mission copié"); };
+$("copy-manifest").onclick = async (e) => {
+  e.preventDefault(); e.stopPropagation();
+  const btn = e.currentTarget;
+  if (await copyText(manifestText)) {
+    btn.classList.add("copied"); btn.lastElementChild.textContent = "Copié";
+    setTimeout(() => { btn.classList.remove("copied"); btn.lastElementChild.textContent = "Copier"; }, 1600);
+  }
+};
+document.querySelectorAll("[data-theme-set]").forEach((b) => (b.onclick = () => applyTheme(b.dataset.themeSet)));
+$("thread").addEventListener("scroll", () => $("topbar").classList.toggle("scrolled", $("thread").scrollTop > 4), { passive: true });
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); newMission(); }
+  if (e.key === "Escape") closeDrawer();
+});
+window.addEventListener("hashchange", route);
 
 // Si l'adresse contient deja un id (#abc123), on reprend le suivi de cette mission
-if (location.hash.length > 1) startPolling();
+route();
+if (!current) $("request").focus();
 </script>
 </body>
 </html>

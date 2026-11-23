@@ -24,7 +24,7 @@ ERRORS ={}
 async def lifespan(app):
     """Au demarrage : serveur MCP + checkpointer PostgreSQL + graphe. A l'arret : on ferme tout."""
     async with AsyncExitStack() as stack:
-        server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
+        server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"], env=dict(os.environ))
         read, write = await stack.enter_async_context(stdio_client(server))
         session = await stack.enter_async_context(ClientSession(read, write))
         await session.initialize()
@@ -87,7 +87,7 @@ async def get_mission(thread_id: str):
         status = "terminee"
 
     return {"thread_id": thread_id, "status": status, "etape_suivante": list(snapshot.next),
-            "essais": values.get("essais"), "plan": values.get("plan"),
+            "request": values.get("request"), "essais": values.get("essais"), "plan": values.get("plan"),
             "manifest": values.get("manifest"), "verdict": values.get("verdict"),
             "cout": values.get("cout"), "decision": values.get("decision"),
             "erreur": ERRORS.get(thread_id)}
