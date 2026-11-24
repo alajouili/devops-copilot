@@ -1,5 +1,6 @@
-"""Le seul endroit qui parle aux LLM : Groq en premier, Gemini en secours."""
+"""Le seul endroit qui parle aux LLM : Groq, puis GitHub Models (optionnel), puis Gemini en secours."""
 import copy
+import json
 import os
 import re
 import time
@@ -28,6 +29,16 @@ if os.getenv("GROQ_API_KEY"):
                          timeout=REQUEST_TIMEOUT, max_retries=SDK_RETRIES),
         "model": os.getenv("GROQ_MODEL"),
     })
+if os.getenv("GITHUB_MODELS_TOKEN"):
+    # Offre gratuite : 15 requetes/minute, 150/jour, 8000 tokens en ENTREE par requete.
+    PROVIDERS.append({
+        "name": "github",
+        "client": OpenAI(api_key=os.getenv("GITHUB_MODELS_TOKEN"),
+                         base_url="https://models.github.ai/inference",
+                         timeout=REQUEST_TIMEOUT, max_retries=SDK_RETRIES),
+        "model": os.getenv("GITHUB_MODEL"),
+        "max_input_tokens": 8000,
+    })
 if os.getenv("GEMINI_API_KEY"):
     PROVIDERS.append({
         "name": "gemini",
@@ -49,7 +60,11 @@ RATE_WAITS = 2         # nombre maximal d'attentes 429 par fournisseur et par ap
 
 
 def _retry_after(e):
-    """Delai demande par un 429 ("Please try again in 1m2.5s / 847.5ms"), en secondes, ou None."""
+    """Delai demande par un 429, en secondes, ou None.
+    Groq : "Please try again in 1m2.5s / 847.5ms" ; GitHub Models : "Please wait 42 seconds"."""
+    m = re.search(r"wait (\d+) seconds?", str(e))
+    if m:
+        return float(m.group(1))
     m = re.search(r"try again in (?:(\d+)m)?([\d.]+)(ms|s)", str(e))
     if not m:
         return None
@@ -88,6 +103,20 @@ def _prepare(messages, provider_name):
     return messages
 
 
+# Estimation grossiere (~4 caracteres par token) pour ne pas gaspiller une requete
+# (quota de 150/jour sur GitHub Models) quand on sait deja qu'elle sera refusee.
+# Si l'estimation se trompe, l'erreur 413 du fournisseur fait aussi passer au suivant.
+CHARS_PER_TOKEN = 4
+
+
+def _too_big(p, messages, tools):
+    limit = p.get("max_input_tokens")
+    if not limit:
+        return False
+    estimate = len(json.dumps(messages)) + len(json.dumps(tools or []))
+    return estimate / CHARS_PER_TOKEN > limit
+
+
 def _report(p, e):
     detail = str(e).replace("\n", " ")[:300]
     if e.__cause__ is not None:      # la vraie cause technique (DNS, timeout...)
@@ -108,6 +137,12 @@ def complete_from(messages, tools=None, temperature=0.2, start=0):
         for i in range(start, len(PROVIDERS)):
             p = PROVIDERS[i]
             prepared = _prepare(messages, p["name"])
+            if _too_big(p, prepared, tools):
+                print(f"[~] {p['name']} : requete trop grosse (limite {p['max_input_tokens']} tokens "
+                      "en entree), on passe au fournisseur suivant")
+                network_only = False
+                last_error = last_error or RuntimeError(f"{p['name']} : requete trop grosse")
+                continue
             rate_waits = 0
             attempt = 0
             while attempt < MAX_ATTEMPTS:
@@ -115,17 +150,22 @@ def complete_from(messages, tools=None, temperature=0.2, start=0):
                 remaining = deadline - time.monotonic()
                 if remaining < MIN_SLICE:
                     break
-                # Partage equitable du temps restant entre ce fournisseur et les suivants,
-                # puis entre l'essai et la tentative automatique du SDK.
-                share = remaining / (len(PROVIDERS) - i)
-                timeout = min(REQUEST_TIMEOUT, share / (1 + SDK_RETRIES))
+                # Ce fournisseur peut utiliser 60 % du temps restant s'il en reste d'autres
+                # apres lui (100 % s'il est le dernier). Si sa part ne suffit pas pour
+                # deux tentatives completes, on renonce a la tentative automatique du SDK :
+                # mieux vaut un seul essai assez long pour generer un gros manifest.
+                share = remaining * (0.6 if i < len(PROVIDERS) - 1 else 1.0)
+                timeout = min(REQUEST_TIMEOUT, share)
+                retries = SDK_RETRIES if share >= timeout * (1 + SDK_RETRIES) else 0
                 try:
                     kwargs = {"model": p["model"], "messages": prepared,
                               "temperature": temperature if attempt == 1 else min(temperature + 0.4, 1.0)}
                     if tools:
                         kwargs["tools"] = tools
-                    client = p["client"].with_options(timeout=timeout)
+                    client = p["client"].with_options(timeout=timeout, max_retries=retries)
                     r = client.chat.completions.create(**kwargs)
+                    if not getattr(r, "choices", None):
+                        raise ValueError(f"reponse inattendue (pas de 'choices') : {str(r)[:100]!r}")
                     return r.choices[0].message, p["name"], r.usage.total_tokens, i
                 except BadRequestError as e:
                     last_error = e
@@ -153,6 +193,14 @@ def complete_from(messages, tools=None, temperature=0.2, start=0):
                     # APITimeoutError est une sous-classe de APIConnectionError
                     last_error = e
                     network_only = network_only and isinstance(e, APIConnectionError)
+                    _report(p, e)
+                    break
+                except Exception as e:
+                    # Reponse illisible (service retire, page HTML, proxy...) : le SDK ou
+                    # Langfuse leve une erreur imprevue. On passe au fournisseur suivant
+                    # au lieu de faire mourir toute la mission.
+                    last_error = e
+                    network_only = False
                     _report(p, e)
                     break
         remaining = deadline - time.monotonic()

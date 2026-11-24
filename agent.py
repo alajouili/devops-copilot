@@ -79,11 +79,13 @@ def to_openai_tool(tool):
                          "parameters": tool.input_schema}}
 
 
-async def run_agent(session, system, user, max_tours=8, allowed=None):
+async def run_agent(session, system, user, max_tours=8, allowed=None, tool_log=None):
     """Fait travailler un agent jusqu'a sa reponse finale.
     allowed : liste des outils autorises pour cet agent (None = tous).
     Le LLM ne voit QUE les outils autorises (Groq rejette toute la requete si le modele
     appelle un outil absent de la liste), et NOTRE code refuse quand meme les autres.
+    tool_log : liste optionnelle, completee avec (nom, arguments, resultat COMPLET) de chaque
+    outil reellement execute (ex. pour reprendre le dernier manifest valide sans le faire recopier).
     Renvoie (reponse finale, nombre de tours, total de tokens consommes)."""
     tools = [to_openai_tool(t) for t in (await session.list_tools()).tools
              if allowed is None or t.name in allowed]
@@ -130,6 +132,8 @@ async def run_agent(session, system, user, max_tours=8, allowed=None):
                 result = await session.call_tool(name, args)
                 text = "\n".join(c.text for c in result.content if hasattr(c, "text"))
                 summaries[tc.id] = summarize(name, text)
+                if tool_log is not None:
+                    tool_log.append((name, args, text))
                 if len(text) > MAX_TOOL_CHARS:
                     text = text[:MAX_TOOL_CHARS] + "\n[... resultat tronque]"
             print(f"    [outil] {name} -> {text.splitlines()[0] if text else '(vide)'}")

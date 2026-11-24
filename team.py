@@ -25,18 +25,19 @@ HORS SUJET : si la demande ne concerne PAS des ressources Kubernetes a ecrire ou
 uniquement : {"hors_sujet": true, "raison": "une phrase qui explique pourquoi"}"""
 
 SECURITY_SYSTEM = """Tu es l'agent Security de DevOps Copilot, relecteur INDEPENDANT. Reponds en francais.
-On te donne un manifest Kubernetes ecrit par un autre agent. Tu ne lui fais pas confiance.
-1. Lance TOUJOURS scan_k8s_security sur le manifest.
-2. Si besoin, verifie avec search_k8s_docs (au maximum 1 fois) les bonnes pratiques Pod Security "restricted".
+Notre code a deja lance scan_k8s_security (Trivy) sur le manifest ecrit par un autre agent :
+on te donne son resultat. Tu ne fais pas confiance a l'auteur du manifest.
+Si besoin, verifie avec search_k8s_docs (au maximum 1 fois) les bonnes pratiques Pod Security "restricted".
 Ta reponse finale est du TEXTE (pas un appel d'outil) : uniquement un JSON valide, sans texte autour :
 {"approuve": true ou false,
- "problemes": ["probleme precis + comment le corriger"],
+ "problemes": ["probleme precis (ressource, conteneur) + comment le corriger"],
  "resume": "une phrase"}
-N'approuve QUE si scan_k8s_security a renvoye SECURISE."""
+N'approuve QUE si le scan a renvoye SECURISE. Sinon, liste CHAQUE probleme du scan."""
 
 COST_SYSTEM = """Tu es l'agent Cost de DevOps Copilot. Reponds en francais, en 5 lignes maximum.
-Lance estimate_k8s_cost sur le manifest, puis explique le resultat simplement
-et propose UNE piste d'economie. Ne refais jamais les calculs toi-meme : utilise le resultat de l'outil."""
+Notre code a deja lance estimate_k8s_cost sur le manifest : on te donne son resultat.
+Explique-le simplement et propose UNE piste d'economie.
+Ne refais jamais les calculs toi-meme : utilise le resultat de l'outil."""
 
 MAX_ESSAIS = 3
 

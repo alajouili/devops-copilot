@@ -53,6 +53,23 @@ def manifest_vide(text):
     return not any(isinstance(d, dict) and d.get("kind") for d in docs)
 
 
+async def call_tool(session, name, yaml_text):
+    """Lance un outil MCP directement (sans LLM) et renvoie son texte."""
+    result = await session.call_tool(name, {"yaml_text": yaml_text})
+    return "\n".join(c.text for c in result.content if hasattr(c, "text"))
+
+
+def pick_manifest(answer, tool_log):
+    """Le manifest du Writer : son dernier appel VALIDE a validate_k8s_yaml (le YAML
+    reellement verifie), sinon un bloc ```yaml de sa reponse, sinon son dernier essai."""
+    tried = [(args.get("yaml_text") or "", text) for name, args, text in tool_log
+             if name == "validate_k8s_yaml" and isinstance(args, dict)]
+    for yaml_text, text in reversed(tried):
+        if text.startswith("VALIDE"):
+            return yaml_text.strip()
+    return extract_yaml(answer) or (tried[-1][0].strip() if tried else "")
+
+
 def title(name):
     print("\n" + "=" * 60 + f"\n[{name}]\n" + "=" * 60)
 
@@ -79,9 +96,11 @@ def build_graph(session, checkpointer=None):
                 f"Plan du Planner :\n{json.dumps(state['plan'], indent=2, ensure_ascii=True)}")
         if state.get("feedback"):
             task += f"\n\nL'agent Security a refuse la version precedente :\n{state['feedback']}\nCorrige ces problemes."
+        tool_log = []
         answer, _, _ = await run_agent(session, WRITER_SYSTEM, task,
-                                       allowed=["search_k8s_docs", "validate_k8s_yaml"])
-        return {"manifest": extract_yaml(answer) or "", "essais": essai}
+                                       allowed=["search_k8s_docs", "validate_k8s_yaml"],
+                                       tool_log=tool_log)
+        return {"manifest": pick_manifest(answer, tool_log), "essais": essai}
   
     async def security(state):
         title("SECURITY")
@@ -93,20 +112,29 @@ def build_graph(session, checkpointer=None):
                        "resume": "manifest vide"}
             print(json.dumps(verdict, indent=2, ensure_ascii=True))
             return {"verdict": verdict, "feedback": f"- {verdict['problemes'][0]}"}
-        task = f"Verifie ce manifest :\n```yaml\n{state['manifest']}\n```"
-        answer, _, _ = await run_agent(session, SECURITY_SYSTEM, task,
-                                       allowed=["scan_k8s_security", "search_k8s_docs"])
+        # Le scan est lance par NOTRE code : le LLM n'a pas a recopier tout le manifest
+        # dans un appel d'outil (cela doublait les tokens et depassait la limite de Groq).
+        scan = await call_tool(session, "scan_k8s_security", state["manifest"])
+        print(f"    [outil] scan_k8s_security -> {scan.splitlines()[0] if scan else '(vide)'}")
+        task = f"Resultat de scan_k8s_security sur le manifest a auditer :\n{scan}"
+        answer, _, _ = await run_agent(session, SECURITY_SYSTEM, task, allowed=["search_k8s_docs"])
         verdict = parse_json(answer) or {"approuve": False,
                                          "problemes": ["verdict illisible"], "resume": answer}
+        if not scan.startswith("SECURISE"):
+            # Regle dure, independante du LLM : pas d'approbation sans scan SECURISE
+            verdict["approuve"] = False
+            if not verdict.get("problemes"):
+                verdict["problemes"] = [l.lstrip("- ") for l in scan.splitlines()[1:] if l.strip()]
         print(json.dumps(verdict, indent=2, ensure_ascii=True))
         feedback = "\n".join(f"- {p}" for p in verdict.get("problemes", []))
         return {"verdict": verdict, "feedback": feedback}
- 
+
     async def cost(state):
         title("COST")
-        task = f"Estime le cout mensuel de ce manifest :\n```yaml\n{state['manifest']}\n```"
-        answer, _, _ = await run_agent(session, COST_SYSTEM, task,
-                                       allowed=["estimate_k8s_cost"])
+        estimate = await call_tool(session, "estimate_k8s_cost", state["manifest"])
+        print(f"    [outil] estimate_k8s_cost -> {estimate.splitlines()[0] if estimate else '(vide)'}")
+        task = f"Resultat de estimate_k8s_cost sur le manifest :\n{estimate}"
+        answer, _, _ = await run_agent(session, COST_SYSTEM, task, allowed=[])
         print(answer)
         return {"cout": answer}
    

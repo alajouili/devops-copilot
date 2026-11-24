@@ -1,4 +1,5 @@
 
+import json
 import os
 import shutil
 import subprocess
@@ -65,12 +66,24 @@ def validate_k8s_yaml(yaml_text: str) -> str:
 @mcp.tool(description="Analyse la SECURITE d'un manifest Kubernetes avec Trivy (mauvaises configurations : "
                       "conteneur root, privileges, pas de limites de ressources). A utiliser pour un audit de securite.")
 def scan_k8s_security(yaml_text: str) -> str:
-    code, output = _run(["trivy", "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL"], yaml_text)
-    if code == 0:
-        return "SECURISE\nAucun probleme HIGH ou CRITICAL trouve."
+    # Sortie JSON puis UNE ligne par probleme : le texte brut de Trivy fait ~700 caracteres
+    # par probleme (tableaux, extraits de code) et etait tronque avant d'arriver au LLM.
+    code, output = _run(["trivy", "config", "--quiet", "--format", "json",
+                         "--exit-code", "1", "--severity", "HIGH,CRITICAL"], yaml_text)
     if code == 127:
         return output                       # Trivy n'est pas installe
-    return "PROBLEMES DETECTES\n" + output
+    try:
+        report = json.loads(output[output.index("{"):])
+    except ValueError:
+        return ("SECURISE\nAucun probleme HIGH ou CRITICAL trouve." if code == 0
+                else "PROBLEMES DETECTES\n" + output[:2000])
+    findings = [f"- {m.get('ID')} ({m.get('Severity')}) : {m.get('Message')} "
+                f"-> correction : {m.get('Resolution', '')}"
+                for r in report.get("Results") or [] for m in r.get("Misconfigurations") or []
+                if m.get("Status", "FAIL") == "FAIL"]
+    if not findings:
+        return "SECURISE\nAucun probleme HIGH ou CRITICAL trouve."
+    return f"PROBLEMES DETECTES ({len(findings)})\n" + "\n".join(findings)
 
 @mcp.tool()
 def count_k8s_resources(yaml_text: str) -> str:
