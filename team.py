@@ -19,7 +19,10 @@ Ta reponse finale est du TEXTE (pas un appel d'outil) : uniquement un JSON valid
 {"ressources": ["Deployment web", "Service web"],
  "exigences": ["3 replicas", "port 8080"],
  "securite": ["non-root", "readOnlyRootFilesystem"],
- "hypotheses": ["ce que tu as du supposer car la demande ne le precise pas"]}"""
+ "hypotheses": ["ce que tu as du supposer car la demande ne le precise pas"]}
+HORS SUJET : si la demande ne concerne PAS des ressources Kubernetes a ecrire ou deployer
+(ex. un poeme, une recette, une question generale sans rapport), n'utilise aucun outil et reponds
+uniquement : {"hors_sujet": true, "raison": "une phrase qui explique pourquoi"}"""
 
 SECURITY_SYSTEM = """Tu es l'agent Security de DevOps Copilot, relecteur INDEPENDANT. Reponds en francais.
 On te donne un manifest Kubernetes ecrit par un autre agent. Tu ne lui fais pas confiance.

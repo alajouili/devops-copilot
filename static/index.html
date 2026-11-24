@@ -824,6 +824,7 @@ function outcome(m) {
   if (m.status === "erreur") return { label: "Erreur", tone: "danger" };
   if (m.status === "en_cours") return { label: "En cours", tone: "accent", live: true };
   if (m.status === "en_attente_approbation") return { label: "Validation requise", tone: "warning", live: true };
+  if (m.status === "hors_sujet") return { label: "Hors sujet", tone: "warning" };
   if (m.decision) return m.decision.startsWith("o")
     ? { label: "Enregistrée", tone: "success" } : { label: "Refusée", tone: "neutral" };
   if (m.verdict && m.verdict.approuve !== true) return { label: "Échec sécurité", tone: "danger" };
@@ -834,7 +835,7 @@ function stepStates(m) {
   const next = (m.etape_suivante || [])[0];
   const running = m.status === "en_cours", err = m.status === "erreur";
   const refused = !!m.verdict && m.verdict.approuve !== true;
-  const ended = m.status === "terminee";
+  const ended = m.status === "terminee" || m.status === "hors_sujet";
   const has = { planner: !!m.plan, writer: !!m.manifest, security: !!m.verdict, cost: !!m.cout, approval: !!m.decision };
   const states = {};
   for (const { id } of STEPS) {
@@ -1082,14 +1083,17 @@ function render(m) {
   $("error").hidden = !m.erreur;
   $("error-text").textContent = m.erreur || "";
 
-  if (m.status === "terminee" || m.status === "erreur") stopPolling();
+  if (m.status === "terminee" || m.status === "erreur" || m.status === "hors_sujet") stopPolling();
   if (nearBottom) thread.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
 }
 
 function renderOutcome(m) {
   const box = $("outcome");
   let tone = null, icon = null, parts = null;
-  if (m.status === "terminee" && m.decision) {
+  if (m.status === "hors_sujet") {
+    tone = "warning"; icon = "alert";
+    parts = [m.message || "Demande hors sujet : DevOps Copilot ne génère que des manifests Kubernetes. Reformulez votre demande."];
+  } else if (m.status === "terminee" && m.decision) {
     if (m.decision.startsWith("o")) {
       tone = "success"; icon = "save";
       parts = ["Manifest enregistré dans ", ["code", "output/manifest.yaml"], " avec le rapport ", ["code", "output/rapport.md"], "."];

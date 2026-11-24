@@ -1,4 +1,5 @@
 
+import os
 import shutil
 import subprocess
 import yaml
@@ -23,11 +24,42 @@ def _run(command: list[str], yaml_text: str) -> tuple[int, str]:
         return result.returncode, result.stdout + result.stderr
 
 
+# Schemas des CRD courants (ServiceMonitor, PrometheusRule, Certificate, ...) :
+# catalogue communautaire datreeio/CRDs-catalog, en plus des schemas Kubernetes officiels.
+CRD_CATALOG = ("https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/"
+               "{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json")
+KUBECONFORM_CACHE = os.path.join(tempfile.gettempdir(), "kubeconform-cache")
+
+
 @mcp.tool(description="Valide la SYNTAXE d'un manifest Kubernetes YAML avec kubeconform "
-                      "(champs inconnus, mauvais types). A utiliser pour verifier qu'un YAML est correct.")
+                      "(champs inconnus, mauvais types), y compris les CRD courants "
+                      "(ServiceMonitor, PrometheusRule, Certificate...). "
+                      "A utiliser pour verifier qu'un YAML est correct.")
 def validate_k8s_yaml(yaml_text: str) -> str:
-    code, output = _run(["kubeconform", "-strict", "-summary"], yaml_text)
-    return ("VALIDE\n" if code == 0 else "INVALIDE\n") + output
+    os.makedirs(KUBECONFORM_CACHE, exist_ok=True)
+    # 1) schemas officiels, 2) catalogue CRD, 3) sinon on saute la ressource
+    #    (-ignore-missing-schemas) mais on le SIGNALE dans la sortie.
+    code, output = _run(["kubeconform", "-strict", "-summary", "-verbose",
+                         "-cache", KUBECONFORM_CACHE,
+                         "-schema-location", "default", "-schema-location", CRD_CATALOG,
+                         "-ignore-missing-schemas"], yaml_text)
+    if code == 127:
+        return output                       # kubeconform n'est pas installe
+    lines, skipped = [], []
+    for line in output.splitlines():
+        line = line.split("manifest.yaml - ", 1)[-1]   # retire le chemin du fichier temporaire
+        if line.endswith(" is valid"):
+            continue                        # on ne garde que l'utile : erreurs et resume
+        if line.endswith(" skipped"):
+            name, _, kind = line.removesuffix(" skipped").rpartition(" ")
+            skipped.append(f"{kind} {name}".strip())
+            continue
+        lines.append(line)
+    if skipped:
+        lines.insert(0, "ATTENTION : aucun schema trouve (ni officiel ni dans le catalogue CRD) pour : "
+                        + ", ".join(skipped) + ". Ces ressources n'ont PAS ete verifiees "
+                        "(-ignore-missing-schemas).")
+    return ("VALIDE\n" if code == 0 else "INVALIDE\n") + "\n".join(lines)
 
 
 @mcp.tool(description="Analyse la SECURITE d'un manifest Kubernetes avec Trivy (mauvaises configurations : "

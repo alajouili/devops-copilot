@@ -5,6 +5,8 @@ import re
 import sys
 from typing import TypedDict
 
+import yaml
+
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
@@ -27,6 +29,8 @@ class State(TypedDict, total=False):
     verdict: dict
     cout: str
     decision: str
+    hors_sujet: bool
+    message: str
 
 def parse_json(text):
     match = re.search(r"\{.*\}", text or "", re.DOTALL)
@@ -36,6 +40,17 @@ def parse_json(text):
         return json.loads(match.group(0))
     except json.JSONDecodeError:
         return None
+
+
+def manifest_vide(text):
+    """Vrai si le manifest ne contient aucune ressource Kubernetes (aucun document avec "kind")."""
+    if not (text or "").strip():
+        return True
+    try:
+        docs = list(yaml.safe_load_all(text))
+    except yaml.YAMLError:
+        return False        # du YAML casse n'est pas "vide" : Security le signalera
+    return not any(isinstance(d, dict) and d.get("kind") for d in docs)
 
 
 def title(name):
@@ -48,7 +63,14 @@ def build_graph(session, checkpointer=None):
         answer, _, _ = await run_agent(session, PLANNER_SYSTEM, state["request"], allowed=["search_k8s_docs"])
         plan = parse_json(answer) or {"note": answer}
         print(json.dumps(plan, indent=2, ensure_ascii=True))
-        return {"plan": plan, "essais": 0, "feedback": ""}
+        return {"plan": plan, "essais": 0, "feedback": "", "hors_sujet": plan.get("hors_sujet") is True}
+
+    def hors_sujet(state):
+        raison = (state["plan"].get("raison") or "la demande ne concerne pas des ressources Kubernetes").rstrip(". ")
+        message = (f"Demande hors sujet : {raison}. DevOps Copilot ne genere que des manifests "
+                   "Kubernetes (Deployment, Service, Ingress...). Reformulez votre demande.")
+        print(f"\n{message}")
+        return {"message": message}
 
     async def writer(state):
         essai = state["essais"] + 1
@@ -63,6 +85,14 @@ def build_graph(session, checkpointer=None):
   
     async def security(state):
         title("SECURITY")
+        if manifest_vide(state.get("manifest")):
+            # Garde-fou : un manifest vide n'est jamais un succes (et ne coute aucun appel LLM)
+            verdict = {"approuve": False,
+                       "problemes": ["manifest vide : ta reponse ne contenait aucun bloc ```yaml "
+                                     "avec des ressources Kubernetes. Fournis le manifest complet."],
+                       "resume": "manifest vide"}
+            print(json.dumps(verdict, indent=2, ensure_ascii=True))
+            return {"verdict": verdict, "feedback": f"- {verdict['problemes'][0]}"}
         task = f"Verifie ce manifest :\n```yaml\n{state['manifest']}\n```"
         answer, _, _ = await run_agent(session, SECURITY_SYSTEM, task,
                                        allowed=["scan_k8s_security", "search_k8s_docs"])
@@ -104,8 +134,11 @@ def build_graph(session, checkpointer=None):
 
     # ---------- Les aretes conditionnelles : (etat) -> nom du noeud suivant ----------
 
+    def after_planner(state):
+        return "hors_sujet" if state.get("hors_sujet") else "writer"
+
     def after_security(state):
-        if state["verdict"].get("approuve") is True:
+        if state["verdict"].get("approuve") is True and not manifest_vide(state.get("manifest")):
             return "cost"
         if state["essais"] >= MAX_ESSAIS:
             return "echec"
@@ -118,11 +151,12 @@ def build_graph(session, checkpointer=None):
 
     g = StateGraph(State)
     for name, fn in [("planner", planner), ("writer", writer), ("security", security),
-                     ("cost", cost), ("approval", approval), ("save", save), ("echec", echec)]:
+                     ("cost", cost), ("approval", approval), ("save", save), ("echec", echec),
+                     ("hors_sujet", hors_sujet)]:
         g.add_node(name, traced(name, fn) if name in AGENT_NODES else fn)
 
     g.add_edge(START, "planner")
-    g.add_edge("planner", "writer")
+    g.add_conditional_edges("planner", after_planner, {"writer": "writer", "hors_sujet": "hors_sujet"})
     g.add_edge("writer", "security")
     g.add_conditional_edges("security", after_security,
                             {"cost": "cost", "writer": "writer", "echec": "echec"})
@@ -130,6 +164,7 @@ def build_graph(session, checkpointer=None):
     g.add_conditional_edges("approval", after_approval, {"save": "save", END: END})
     g.add_edge("save", END)
     g.add_edge("echec", END)
+    g.add_edge("hors_sujet", END)
 
     return g.compile(checkpointer=checkpointer or InMemorySaver())
 
@@ -151,6 +186,9 @@ async def main(request):
                 answer = input(f"\n{pause['question']} ")
                 result = await graph.ainvoke(Command(resume=answer), config)
 
+            if result.get("hors_sujet"):
+                print(f"\nFin du graphe : {result.get('message')}")
+                return
             print(f"\nFin du graphe. Essais du Writer : {result.get('essais')}, "
                   f"decision : {result.get('decision', '-')}")
 

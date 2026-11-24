@@ -83,6 +83,8 @@ async def get_mission(thread_id: str):
         status = "erreur"
     elif "approval" in snapshot.next:
         status = "en_attente_approbation"
+    elif values.get("hors_sujet"):
+        status = "hors_sujet"
     else:
         status = "terminee"
 
@@ -90,7 +92,7 @@ async def get_mission(thread_id: str):
             "request": values.get("request"), "essais": values.get("essais"), "plan": values.get("plan"),
             "manifest": values.get("manifest"), "verdict": values.get("verdict"),
             "cout": values.get("cout"), "decision": values.get("decision"),
-            "erreur": ERRORS.get(thread_id)}
+            "message": values.get("message"), "erreur": ERRORS.get(thread_id)}
 
 
 @app.post("/missions/{thread_id}/decision")
