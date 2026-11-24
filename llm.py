@@ -1,8 +1,10 @@
-"""Le seul endroit qui parle aux LLM : Groq, puis GitHub Models (optionnel), puis Gemini en secours."""
+"""Le seul endroit qui parle aux LLM : Groq, puis Gemini, puis Mistral (optionnel)
+en dernier secours."""
 import copy
 import json
 import os
 import re
+import threading
 import time
 
 from dotenv import load_dotenv
@@ -29,16 +31,6 @@ if os.getenv("GROQ_API_KEY"):
                          timeout=REQUEST_TIMEOUT, max_retries=SDK_RETRIES),
         "model": os.getenv("GROQ_MODEL"),
     })
-if os.getenv("GITHUB_MODELS_TOKEN"):
-    # Offre gratuite : 15 requetes/minute, 150/jour, 8000 tokens en ENTREE par requete.
-    PROVIDERS.append({
-        "name": "github",
-        "client": OpenAI(api_key=os.getenv("GITHUB_MODELS_TOKEN"),
-                         base_url="https://models.github.ai/inference",
-                         timeout=REQUEST_TIMEOUT, max_retries=SDK_RETRIES),
-        "model": os.getenv("GITHUB_MODEL"),
-        "max_input_tokens": 8000,
-    })
 if os.getenv("GEMINI_API_KEY"):
     PROVIDERS.append({
         "name": "gemini",
@@ -46,6 +38,22 @@ if os.getenv("GEMINI_API_KEY"):
                          base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                          timeout=REQUEST_TIMEOUT, max_retries=SDK_RETRIES),
         "model": os.getenv("GEMINI_MODEL"),
+    })
+if os.getenv("MISTRAL_API_KEY"):
+    # Offre gratuite (mistral-small-2603) : 1 requete/seconde, 20000 tokens/minute.
+    # En dernier tant que le compte renvoie des 429.
+    PROVIDERS.append({
+        "name": "mistral",
+        "client": OpenAI(api_key=os.getenv("MISTRAL_API_KEY"), base_url="https://api.mistral.ai/v1",
+                         timeout=REQUEST_TIMEOUT, max_retries=0),
+        "model": os.getenv("MISTRAL_MODEL"),
+        # 20000 tokens/minute entree + sortie : on garde ~4000 tokens pour la reponse.
+        "max_input_tokens": 16000,
+        # Pas de nouvelle tentative du SDK : sur un 429, le SDK attendrait (Retry-After)
+        # avant de reessayer ; on prefere passer tout de suite au fournisseur suivant.
+        "sdk_retries": 0,
+        # 1 requete par seconde : ecart minimal entre deux appels.
+        "min_interval": 1.0,
     })
 
 MAX_ATTEMPTS = 2   # essais par fournisseur pour une erreur ponctuelle du modele
@@ -61,10 +69,7 @@ RATE_WAITS = 2         # nombre maximal d'attentes 429 par fournisseur et par ap
 
 def _retry_after(e):
     """Delai demande par un 429, en secondes, ou None.
-    Groq : "Please try again in 1m2.5s / 847.5ms" ; GitHub Models : "Please wait 42 seconds"."""
-    m = re.search(r"wait (\d+) seconds?", str(e))
-    if m:
-        return float(m.group(1))
+    Groq : "Please try again in 1m2.5s / 847.5ms"."""
     m = re.search(r"try again in (?:(\d+)m)?([\d.]+)(ms|s)", str(e))
     if not m:
         return None
@@ -104,7 +109,7 @@ def _prepare(messages, provider_name):
 
 
 # Estimation grossiere (~4 caracteres par token) pour ne pas gaspiller une requete
-# (quota de 150/jour sur GitHub Models) quand on sait deja qu'elle sera refusee.
+# (limite de tokens par minute de Mistral) quand on sait deja qu'elle sera refusee.
 # Si l'estimation se trompe, l'erreur 413 du fournisseur fait aussi passer au suivant.
 CHARS_PER_TOKEN = 4
 
@@ -115,6 +120,21 @@ def _too_big(p, messages, tools):
         return False
     estimate = len(json.dumps(messages)) + len(json.dumps(tools or []))
     return estimate / CHARS_PER_TOKEN > limit
+
+
+_THROTTLE_LOCK = threading.Lock()   # plusieurs missions peuvent tourner en parallele
+
+
+def _throttle(p):
+    """Respecte l'ecart minimal entre deux requetes (ex. 1/s pour Mistral)."""
+    interval = p.get("min_interval")
+    if not interval:
+        return
+    with _THROTTLE_LOCK:
+        wait = p.get("last_call", 0.0) + interval - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        p["last_call"] = time.monotonic()
 
 
 def _report(p, e):
@@ -156,13 +176,15 @@ def complete_from(messages, tools=None, temperature=0.2, start=0):
                 # mieux vaut un seul essai assez long pour generer un gros manifest.
                 share = remaining * (0.6 if i < len(PROVIDERS) - 1 else 1.0)
                 timeout = min(REQUEST_TIMEOUT, share)
-                retries = SDK_RETRIES if share >= timeout * (1 + SDK_RETRIES) else 0
+                sdk_retries = p.get("sdk_retries", SDK_RETRIES)
+                retries = sdk_retries if share >= timeout * (1 + sdk_retries) else 0
                 try:
                     kwargs = {"model": p["model"], "messages": prepared,
                               "temperature": temperature if attempt == 1 else min(temperature + 0.4, 1.0)}
                     if tools:
                         kwargs["tools"] = tools
                     client = p["client"].with_options(timeout=timeout, max_retries=retries)
+                    _throttle(p)
                     r = client.chat.completions.create(**kwargs)
                     if not getattr(r, "choices", None):
                         raise ValueError(f"reponse inattendue (pas de 'choices') : {str(r)[:100]!r}")
