@@ -1,4 +1,5 @@
 """Boucle d'agent reutilisable : LLM + outils MCP, jusqu'a la reponse finale."""
+import asyncio
 import json
 import re
 from collections import Counter
@@ -100,8 +101,12 @@ async def run_agent(session, system, user, max_tours=8, allowed=None, tool_log=N
         saved = compact(messages, summaries)
         if saved:
             print(f"    [contexte] historique compacte : -{saved} caracteres")
-        message, provider, tokens, provider_index = complete_from(messages, tools=tools,
-                                                                  start=provider_index)
+        # complete_from est BLOQUANT (requete HTTP synchrone, time.sleep sur un 429...).
+        # On l'execute dans un thread : la boucle asyncio de FastAPI reste libre et
+        # continue de repondre (GET /, livenessProbe) pendant que le LLM travaille.
+        # to_thread copie le contexte : la trace Langfuse reste rattachee au bon agent.
+        message, provider, tokens, provider_index = await asyncio.to_thread(
+            complete_from, messages, tools=tools, start=provider_index)
         total_tokens += tokens
         print(f"--- Tour {tour} [{provider}, {tokens} tokens]")
 

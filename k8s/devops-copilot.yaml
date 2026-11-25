@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-copilot
+  namespace: devops-copilot
+  labels:
+    app: devops-copilot
+spec:
+  replicas: 1   # les missions en cours sont suivies en memoire (RUNNING) : une seule instance
+  selector:
+    matchLabels:
+      app: devops-copilot
+  template:
+    metadata:
+      labels:
+        app: devops-copilot
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: api
+        image: devops-copilot:0.3
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: copilot-keys
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: copilot-db
+              key: DATABASE_URL
+        - name: LANGFUSE_HOST
+          value: http://langfuse-langfuse-web-1:3000
+        - name: LANGFUSE_BASE_URL
+          value: http://langfuse-langfuse-web-1:3000
+        - name: HOME
+          value: /home/copilot
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+                  readinessProbe:
+            httpGet:
+              path: "/"
+              port: 8000
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: "/"
+              port: 8000
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: output
+          mountPath: /app/output
+        - name: cache
+          mountPath: /home/copilot/.cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: output
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devops-copilot
+  namespace: devops-copilot
+  labels:
+    app: devops-copilot
+spec:
+  type: ClusterIP
+  selector:
+    app: devops-copilot
+  ports:
+  - port: 80
+    targetPort: 8000
