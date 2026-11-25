@@ -1,6 +1,6 @@
 import json
-from llm import complete
-from tools import TOOLS, AVAILABLE
+from copilot.llm import complete
+from examples.tools import TOOLS, AVAILABLE
 
 BROKEN_YAML = """apiVersion: apps/v1
 kind: Deployment

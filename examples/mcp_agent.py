@@ -6,7 +6,7 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from llm import complete
+from copilot.llm import complete
 
 YAML = """apiVersion: apps/v1
 kind: Deployment
@@ -38,7 +38,7 @@ def to_openai_tool(tool):
 
 
 async def main():
-    server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
+    server = StdioServerParameters(command=sys.executable, args=["-m", "copilot.mcp_server"])
     async with stdio_client(server) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

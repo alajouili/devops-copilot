@@ -1,4 +1,4 @@
-from llm import chat
+from copilot.llm import chat
 
 SYSTEM = {"role": "system",
           "content": "Tu es DevOps Copilot, un assistant DevOps. Réponds en français, de façon concise."}

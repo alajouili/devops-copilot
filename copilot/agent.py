@@ -4,7 +4,7 @@ import json
 import re
 from collections import Counter
 
-from llm import complete_from
+from copilot.llm import complete_from
 
 MAX_TOOL_CHARS = 1500        # taille maximale d'un resultat d'outil renvoye au LLM
 MAX_CALLS_PER_TOOL = 3       # nombre maximal d'appels d'un meme outil par mission

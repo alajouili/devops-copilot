@@ -13,10 +13,10 @@ from langgraph.types import Command, interrupt
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from agent import run_agent
-from tracing import AGENT_NODES, traced
-from team import COST_SYSTEM, MAX_ESSAIS, PLANNER_SYSTEM, SECURITY_SYSTEM
-from writer import DEFAULT_REQUEST, TEAM_SYSTEM as WRITER_SYSTEM, extract_yaml
+from copilot.agent import run_agent
+from copilot.tracing import AGENT_NODES, traced
+from copilot.team import COST_SYSTEM, MAX_ESSAIS, PLANNER_SYSTEM, SECURITY_SYSTEM
+from copilot.writer import DEFAULT_REQUEST, TEAM_SYSTEM as WRITER_SYSTEM, extract_yaml
 
 
 
@@ -198,7 +198,7 @@ def build_graph(session, checkpointer=None):
 
 
 async def main(request):
-    server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
+    server = StdioServerParameters(command=sys.executable, args=["-m", "copilot.mcp_server"])
     async with stdio_client(server) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

@@ -8,8 +8,8 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from agent import run_agent
-from writer import TEAM_SYSTEM as WRITER_SYSTEM, extract_yaml
+from copilot.agent import run_agent
+from copilot.writer import TEAM_SYSTEM as WRITER_SYSTEM, extract_yaml
 
 PLANNER_SYSTEM = """Tu es l'agent Planner de DevOps Copilot. Reponds en francais.
 Analyse la demande et produis un plan de travail pour l'agent Writer.
@@ -60,7 +60,7 @@ async def main():
         "qui expose le port 80 vers le port 8080 des pods.")
     print(f"Demande : {request}")
 
-    server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
+    server = StdioServerParameters(command=sys.executable, args=["-m", "copilot.mcp_server"])
     async with stdio_client(server) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

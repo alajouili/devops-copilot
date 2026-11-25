@@ -42,29 +42,29 @@ up: db ## Demarre les services necessaires (base de donnees)
 # ---------- Lancer l'application ----------
 
 run: db stop ## Lance l'API + la page web (http://localhost:8000)
-	$(VENV)/bin/uvicorn api:app --port $(PORT)
+	$(VENV)/bin/uvicorn copilot.api:app --port $(PORT)
 
 dev: db stop ## Comme run, mais redemarre a chaque modification du code
-	$(VENV)/bin/uvicorn api:app --port $(PORT) --reload
+	$(VENV)/bin/uvicorn copilot.api:app --port $(PORT) --reload
 
 cli: db ## Lance une mission en ligne de commande (make cli REQ="ma demande")
-	$(PY) graph.py $(REQ)
+	$(PY) -m copilot.graph $(REQ)
 
 stop: ## Libere le port 8000 (arrete un ancien uvicorn)
-	-@pkill -f "[u]vicorn api:app" && sleep 1 || true
-	-@pkill -9 -f "[u]vicorn api:app" || true
+	-@pkill -f "[u]vicorn copilot.api:app" && sleep 1 || true
+	-@pkill -9 -f "[u]vicorn copilot.api:app" || true
 	@ss -ltn | grep -q ':$(PORT) ' && echo "Port $(PORT) encore occupe" || echo "Port $(PORT) libre"
 
 # ---------- Verifications ----------
 
 check-ascii: ## Verifie que les fichiers sont en ASCII pur
-	@! grep -nP '[^\x00-\x7F]' *.py static/*.html Dockerfile Makefile && echo "ASCII OK"
+	@! grep -nP '[^\x00-\x7F]' copilot/*.py copilot/static/*.html scripts/*.py Dockerfile Makefile && echo "ASCII OK"
 
 check-import: ## Verifie que l'API se charge sans erreur
-	$(PY) -c "import api; print('import api OK')"
+	$(PY) -c "import copilot.api; print('import api OK')"
 
 check-providers: ## Teste les fournisseurs LLM (Groq, Gemini, Mistral)
-	$(PY) check_providers.py
+	$(PY) -m scripts.check_providers
 
 test: check-ascii check-import ## Lance toutes les verifications rapides (sans LLM)
 	@echo "Verifications OK"

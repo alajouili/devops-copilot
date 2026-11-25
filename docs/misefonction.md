@@ -67,8 +67,8 @@ cd ~/langfuse && docker compose stop
 
 ```bash
 cd ~/devops-copilot && source .venv/bin/activate
-python -c "import api; print('OK')"
-uvicorn api:app --port 8000
+python -c "import copilot.api; print('OK')"
+uvicorn copilot.api:app --port 8000
 ```
 
 - Attendre la ligne `[api] pret : MCP connecte, checkpoints dans PostgreSQL`.
@@ -78,9 +78,9 @@ uvicorn api:app --port 8000
 Mode ligne de commande (sans page web) :
 
 ```bash
-python graph.py                 # demande par defaut (nginx)
-python graph.py "ma demande"    # demande personnalisee
-python graph.py --draw          # dessin du graphe (coller dans https://mermaid.live)
+python -m copilot.graph                 # demande par defaut (nginx)
+python -m copilot.graph "ma demande"    # demande personnalisee
+python -m copilot.graph --draw          # dessin du graphe (coller dans https://mermaid.live)
 ```
 
 ### Option B : dans Docker
@@ -167,5 +167,5 @@ Les donnees restent sur le disque : missions (PostgreSQL), traces (Langfuse), cl
 Verifier qu'un fichier est en ASCII pur :
 
 ```bash
-grep -nP '[^\x00-\x7F]' *.py
+grep -rnP '[^\x00-\x7F]' copilot scripts
 ```

@@ -19,9 +19,8 @@ RUN useradd --create-home --uid 10001 copilot \
  && mkdir -p /app/output && chown copilot:copilot /app/output
 
 # 4) Le code en dernier : c'est ce qui change le plus souvent
-COPY --chown=copilot:copilot *.py ./
-COPY --chown=copilot:copilot static/ ./static/
+COPY --chown=copilot:copilot copilot/ ./copilot/
 
 USER 10001
 EXPOSE 8000
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "copilot.api:app", "--host", "0.0.0.0", "--port", "8000"]

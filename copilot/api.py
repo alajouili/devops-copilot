@@ -12,8 +12,8 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from pydantic import BaseModel
 
-from graph import build_graph
-from writer import DEFAULT_REQUEST
+from copilot.graph import build_graph
+from copilot.writer import DEFAULT_REQUEST
 
 load_dotenv()
 
@@ -24,7 +24,7 @@ ERRORS ={}
 async def lifespan(app):
     """Au demarrage : serveur MCP + checkpointer PostgreSQL + graphe. A l'arret : on ferme tout."""
     async with AsyncExitStack() as stack:
-        server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"], env=dict(os.environ))
+        server = StdioServerParameters(command=sys.executable, args=["-m", "copilot.mcp_server"], env=dict(os.environ))
         read, write = await stack.enter_async_context(stdio_client(server))
         session = await stack.enter_async_context(ClientSession(read, write))
         await session.initialize()
@@ -111,4 +111,4 @@ from fastapi.responses import FileResponse
 @app.get("/")
 async def home():
     """La page web de DevOps Copilot."""
-    return FileResponse("static/index.html")
+    return FileResponse("copilot/static/index.html")

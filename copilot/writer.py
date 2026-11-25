@@ -8,7 +8,7 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from agent import run_agent
+from copilot.agent import run_agent
 
 _BASE = """Tu es l'agent Writer de DevOps Copilot, expert Kubernetes. Reponds en francais.
 Ta mission : ecrire un manifest Kubernetes YAML qui repond exactement a la demande.
@@ -65,7 +65,7 @@ async def main():
     request = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REQUEST
     print(f" Demande : {request}\n")
 
-    server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
+    server = StdioServerParameters(command=sys.executable, args=["-m", "copilot.mcp_server"])
     async with stdio_client(server) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

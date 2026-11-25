@@ -1,6 +1,6 @@
 """Teste les fournisseurs LLM configures dans .env : Groq, Gemini, Mistral.
 
-Usage : python check_providers.py
+Usage : python -m scripts.check_providers
 
 Les cles API ne sont JAMAIS affichees : on indique seulement si elles sont
 presentes, et tout message d'erreur est nettoye avant affichage.

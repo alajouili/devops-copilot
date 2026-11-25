@@ -7,7 +7,7 @@ import yaml
 import tempfile
 import logging
 logging.getLogger("httpx").setLevel(logging.WARNING)
-from rag import search
+from copilot.rag import search
 from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer("devops-tools")

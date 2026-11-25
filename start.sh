@@ -55,9 +55,9 @@ start_db() {
 
 stop_all() {
     info "Arret des serveurs lances par ce script..."
-    pkill -f "[u]vicorn api:app" 2>/dev/null && sleep 1
-    pkill -9 -f "[u]vicorn api:app" 2>/dev/null
-    pkill -f "[a]2a_server.py" 2>/dev/null
+    pkill -f "[u]vicorn copilot.api:app" 2>/dev/null && sleep 1
+    pkill -9 -f "[u]vicorn copilot.api:app" 2>/dev/null
+    pkill -f "[c]opilot.a2a_server" 2>/dev/null
     pkill -f "[p]ort-forward svc/devops-copilot" 2>/dev/null
     for p in $API_PORT $A2A_PORT $K8S_PORT; do
         if port_busy "$p"; then info "port $p : encore occupe (ss -ltnp | grep :$p)"; else info "port $p : libre"; fi
@@ -67,14 +67,14 @@ stop_all() {
 start_api_foreground() {
     port_busy "$API_PORT" && { info "Port $API_PORT occupe : arret de l'ancien serveur."; stop_all; }
     info "Lancement de l'API sur http://localhost:$API_PORT (Ctrl+C pour arreter)"
-    exec "$VENV/bin/uvicorn" api:app --port "$API_PORT"
+    exec "$VENV/bin/uvicorn" copilot.api:app --port "$API_PORT"
 }
 
 start_api_background() {
     port_busy "$API_PORT" && { info "Port $API_PORT occupe : arret de l'ancien serveur."; stop_all; }
     mkdir -p "$LOG_DIR"
     info "Lancement de l'API en arriere-plan (logs : $LOG_DIR/api.log)..."
-    nohup "$VENV/bin/uvicorn" api:app --port "$API_PORT" > "$LOG_DIR/api.log" 2>&1 &
+    nohup "$VENV/bin/uvicorn" copilot.api:app --port "$API_PORT" > "$LOG_DIR/api.log" 2>&1 &
     wait_http "http://localhost:$API_PORT/" 60 || fail "l'API ne demarre pas : voir $LOG_DIR/api.log"
     info "API prete sur http://localhost:$API_PORT"
 }
@@ -109,8 +109,8 @@ case "$MODE" in
         port_busy "$A2A_PORT" && fail "port $A2A_PORT deja occupe (ss -ltnp | grep :$A2A_PORT)."
         trap 'info "Arret..."; stop_all' EXIT
         info "Serveur A2A sur http://localhost:$A2A_PORT (carte : /.well-known/agent-card.json)"
-        info "Dans un autre terminal : .venv/bin/python a2a_client.py \"votre demande\""
-        "$VENV/bin/python" a2a_server.py
+        info "Dans un autre terminal : .venv/bin/python -m scripts.a2a_client \"votre demande\""
+        "$VENV/bin/python" -m copilot.a2a_server
         ;;
     k8s)
         info "Demarrage du cluster kind et de la base..."
@@ -129,7 +129,7 @@ case "$MODE" in
         ;;
     check)
         check_base
-        "$VENV/bin/python" check_providers.py || true
+        "$VENV/bin/python" -m scripts.check_providers || true
         ;;
     status)
         show_status

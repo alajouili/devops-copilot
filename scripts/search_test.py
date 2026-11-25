@@ -1,6 +1,6 @@
 import sys
 
-from rag import search
+from copilot.rag import search
 
 question = sys.argv[1] if len(sys.argv) > 1 else "Coment remplacer PodSecurityPolicy ?"
 

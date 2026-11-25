@@ -6,7 +6,7 @@ from mcp.client.stdio import stdio_client
 
 
 async def main():
-    server = StdioServerParameters(command=sys.executable, args=["mcp_server.py"])
+    server = StdioServerParameters(command=sys.executable, args=["-m", "copilot.mcp_server"])
     async with stdio_client(server) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

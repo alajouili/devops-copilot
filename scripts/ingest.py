@@ -1,7 +1,7 @@
 """Ingestion : lit la documentation, la decoupe, calcule les embeddings et remplit pgvector."""
 import pathlib
 
-from rag import chunk, clean_markdown, connect, embed, init_db, to_pgvector
+from copilot.rag import chunk, clean_markdown, connect, embed, init_db, to_pgvector
 
 DOCS = pathlib.Path("docs/k8s")
 BATCH = 20
