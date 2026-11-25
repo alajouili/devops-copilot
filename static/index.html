@@ -524,7 +524,7 @@ pre.raw { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; background:
         <button data-theme-set="dark" aria-pressed="false"><span data-icon="moon"></span>Sombre</button>
         <button data-theme-set="system" aria-pressed="false"><span data-icon="monitor"></span>Auto</button>
       </div>
-      <div class="foot-note">Historique conservé dans ce navigateur.</div>
+      <div class="foot-note">Historique conserv&eacute; dans ce navigateur.</div>
     </div>
   </aside>
   <div class="scrim" id="scrim"></div>
@@ -548,14 +548,14 @@ pre.raw { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; background:
       <div class="welcome" id="welcome">
         <div class="welcome-inner">
           <div class="logo hero-logo" data-icon="cube"></div>
-          <h1>Que voulez-vous déployer&nbsp;?<br><span>Décrivez-le, l'équipe s'occupe du reste.</span></h1>
-          <p class="lead">Quatre agents IA écrivent, vérifient et chiffrent vos manifests Kubernetes. Rien n'est enregistré sans votre validation.</p>
+          <h1>Que voulez-vous d&eacute;ployer&nbsp;?<br><span>D&eacute;crivez-le, l'&eacute;quipe s'occupe du reste.</span></h1>
+          <p class="lead">Quatre agents IA &eacute;crivent, v&eacute;rifient et chiffrent vos manifests Kubernetes. Rien n'est enregistr&eacute; sans votre validation.</p>
           <div class="suggestions" id="suggestions"></div>
           <div class="team" aria-label="Pipeline des agents">
-            <span class="agent"><span data-icon="compass"></span>Planner</span><span class="arrow">→</span>
-            <span class="agent"><span data-icon="file"></span>Writer</span><span class="arrow">→</span>
-            <span class="agent"><span data-icon="shield"></span>Security</span><span class="arrow">→</span>
-            <span class="agent"><span data-icon="coins"></span>Cost</span><span class="arrow">→</span>
+            <span class="agent"><span data-icon="compass"></span>Planner</span><span class="arrow">&rarr;</span>
+            <span class="agent"><span data-icon="file"></span>Writer</span><span class="arrow">&rarr;</span>
+            <span class="agent"><span data-icon="shield"></span>Security</span><span class="arrow">&rarr;</span>
+            <span class="agent"><span data-icon="coins"></span>Cost</span><span class="arrow">&rarr;</span>
             <span class="agent"><span data-icon="user"></span>Vous</span>
           </div>
         </div>
@@ -600,21 +600,21 @@ pre.raw { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; background:
 
               <details class="panel" id="p-verdict" open hidden>
                 <summary><span class="p-icon" id="verdict-icon" data-icon="shield"></span>
-                  <span class="p-title"><b>Audit de sécurité</b><small id="verdict-meta">Security</small></span>
+                  <span class="p-title"><b>Audit de s&eacute;curit&eacute;</b><small id="verdict-meta">Security</small></span>
                   <span class="chev" data-icon="chevron"></span></summary>
                 <div class="p-body" id="verdict"></div>
               </details>
 
               <details class="panel" id="p-cout" open hidden>
                 <summary><span class="p-icon tone-success" data-icon="coins"></span>
-                  <span class="p-title"><b>Estimation du coût</b><small id="cout-meta">Cost</small></span>
+                  <span class="p-title"><b>Estimation du co&ucirc;t</b><small id="cout-meta">Cost</small></span>
                   <span class="chev" data-icon="chevron"></span></summary>
                 <div class="p-body"><div class="prose" id="cout"></div></div>
               </details>
 
               <div class="approval" id="decision" hidden>
                 <h3><span data-icon="user"></span>Votre validation est requise</h3>
-                <p>Les agents ont terminé. Enregistrer ce manifest dans <code>output/manifest.yaml</code>&nbsp;?</p>
+                <p>Les agents ont termin&eacute;. Enregistrer ce manifest dans <code>output/manifest.yaml</code>&nbsp;?</p>
                 <div class="actions">
                   <button class="btn btn-primary" id="approve"><span data-icon="check" data-cls="i-sm"></span><span>Approuver et enregistrer</span></button>
                   <button class="btn btn-outline" id="reject"><span data-icon="x" data-cls="i-sm"></span><span>Refuser</span></button>
@@ -633,13 +633,13 @@ pre.raw { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; background:
     <footer class="composer-wrap">
       <form class="composer" id="composer">
         <label for="request" class="sr">Votre demande</label>
-        <textarea id="request" rows="1" placeholder="Décrivez les ressources Kubernetes dont vous avez besoin…"></textarea>
+        <textarea id="request" rows="1" placeholder="D&eacute;crivez les ressources Kubernetes dont vous avez besoin&hellip;"></textarea>
         <div class="composer-bar">
-          <div class="composer-hint"><span data-icon="sparkles"></span><span id="hint">Planner · Writer · Security · Cost</span></div>
+          <div class="composer-hint"><span data-icon="sparkles"></span><span id="hint">Planner &middot; Writer &middot; Security &middot; Cost</span></div>
           <button class="send" id="launch" type="submit" aria-label="Lancer la mission" disabled data-icon="arrow-up"></button>
         </div>
       </form>
-      <div class="disclaimer">Entrée pour lancer · Maj + Entrée pour un saut de ligne · Vérifiez toujours un manifest avant de l'appliquer.</div>
+      <div class="disclaimer">Entr&eacute;e pour lancer &middot; Maj + Entr&eacute;e pour un saut de ligne &middot; V&eacute;rifiez toujours un manifest avant de l'appliquer.</div>
     </footer>
   </main>
 </div>
@@ -782,7 +782,7 @@ function renderHistory() {
   nav.replaceChildren();
   if (!list.length) {
     const empty = el("div", "h-empty");
-    empty.append(iconEl(q ? "search" : "inbox"), el("div", "", q ? "Aucun résultat" : "Vos missions apparaîtront ici"));
+    empty.append(iconEl(q ? "search" : "inbox"), el("div", "", q ? "Aucun r\u00e9sultat" : "Vos missions appara\u00eetront ici"));
     nav.append(empty);
     return;
   }
@@ -814,9 +814,9 @@ function renderHistory() {
 // ============================================================================
 const STEPS = [
   { id: "planner",  name: "Planner",    icon: "compass", live: "Le Planner analyse votre demande" },
-  { id: "writer",   name: "Writer",     icon: "file",    live: "Le Writer rédige le manifest" },
+  { id: "writer",   name: "Writer",     icon: "file",    live: "Le Writer r\u00e9dige le manifest" },
   { id: "security", name: "Security",   icon: "shield",  live: "Security audite le manifest" },
-  { id: "cost",     name: "Cost",       icon: "coins",   live: "Cost estime le coût mensuel" },
+  { id: "cost",     name: "Cost",       icon: "coins",   live: "Cost estime le co\u00fbt mensuel" },
   { id: "approval", name: "Validation", icon: "user",    live: "" },
 ];
 
@@ -826,9 +826,9 @@ function outcome(m) {
   if (m.status === "en_attente_approbation") return { label: "Validation requise", tone: "warning", live: true };
   if (m.status === "hors_sujet") return { label: "Hors sujet", tone: "warning" };
   if (m.decision) return m.decision.startsWith("o")
-    ? { label: "Enregistrée", tone: "success" } : { label: "Refusée", tone: "neutral" };
-  if (m.verdict && m.verdict.approuve !== true) return { label: "Échec sécurité", tone: "danger" };
-  return { label: "Terminée", tone: "success" };
+    ? { label: "Enregistr\u00e9e", tone: "success" } : { label: "Refus\u00e9e", tone: "neutral" };
+  if (m.verdict && m.verdict.approuve !== true) return { label: "\u00c9chec s\u00e9curit\u00e9", tone: "danger" };
+  return { label: "Termin\u00e9e", tone: "success" };
 }
 
 function stepStates(m) {
@@ -853,17 +853,17 @@ function stepStates(m) {
 function stepLabel(id, state, m) {
   const essai = (m.essais || 0) + 1;
   switch (state) {
-    case "active":  return id === "writer" ? `Essai ${Math.min(essai, MAX_ESSAIS)}/${MAX_ESSAIS}` : "En cours…";
-    case "waiting": return "À vous";
+    case "active":  return id === "writer" ? `Essai ${Math.min(essai, MAX_ESSAIS)}/${MAX_ESSAIS}` : "En cours\u2026";
+    case "waiting": return "\u00c0 vous";
     case "error":   return "Erreur";
-    case "skipped": return "Ignoré";
+    case "skipped": return "Ignor\u00e9";
     case "pending": return "En attente";
-    case "failed":  return m.status === "en_cours" ? "Refusé · correction" : "Refusé";
+    case "failed":  return m.status === "en_cours" ? "Refus\u00e9 \u00b7 correction" : "Refus\u00e9";
     case "done":
-      if (id === "writer" && m.essais > 1) return `OK · ${m.essais} essais`;
-      if (id === "approval") return m.decision.startsWith("o") ? "Approuvé" : "Refusé";
-      if (id === "security") return "Approuvé";
-      return "Terminé";
+      if (id === "writer" && m.essais > 1) return `OK \u00b7 ${m.essais} essais`;
+      if (id === "approval") return m.decision.startsWith("o") ? "Approuv\u00e9" : "Refus\u00e9";
+      if (id === "security") return "Approuv\u00e9";
+      return "Termin\u00e9";
   }
 }
 
@@ -896,7 +896,7 @@ function changed(key, value) {
   cache[key] = s; return true;
 }
 
-// Texte riche minimal : paragraphes, listes, **gras**, `code` — construit en DOM, jamais en innerHTML.
+// Texte riche minimal : paragraphes, listes, **gras**, `code` -- construit en DOM, jamais en innerHTML.
 function inline(parent, text) {
   for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)) {
     if (!part) continue;
@@ -910,7 +910,7 @@ function richText(box, text) {
   let list = null, para = null;
   for (const raw of String(text).split("\n")) {
     const line = raw.trim();
-    const bullet = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+    const bullet = line.match(/^(?:[-*\u2022]|\d+[.)])\s+(.*)$/);
     if (!line) { list = para = null; continue; }
     if (bullet) {
       if (!list) { list = el("ul"); box.append(list); para = null; }
@@ -947,7 +947,7 @@ function yamlLine(line) {
   return span;
 }
 
-const PLAN_LABELS = { ressources: "Ressources", exigences: "Exigences", securite: "Sécurité", hypotheses: "Hypothèses", note: "Note" };
+const PLAN_LABELS = { ressources: "Ressources", exigences: "Exigences", securite: "S\u00e9curit\u00e9", hypotheses: "Hypoth\u00e8ses", note: "Note" };
 function renderPlan(plan) {
   const box = $("plan");
   box.replaceChildren();
@@ -977,7 +977,7 @@ function renderPlan(plan) {
   }
   box.append(grid);
   const n = Array.isArray(plan.ressources) ? plan.ressources.length : 0;
-  $("plan-meta").textContent = n ? `Planner · ${n} ressource${n > 1 ? "s" : ""}` : "Planner";
+  $("plan-meta").textContent = n ? `Planner \u00b7 ${n} ressource${n > 1 ? "s" : ""}` : "Planner";
 }
 
 function renderManifest(text, m) {
@@ -985,7 +985,7 @@ function renderManifest(text, m) {
   const code = $("manifest");
   code.replaceChildren(...text.replace(/\n$/, "").split("\n").map(yamlLine));
   const lines = text.split("\n").length;
-  $("manifest-meta").textContent = `Writer · ${lines} lignes` + (m.essais > 1 ? ` · version ${m.essais}` : "");
+  $("manifest-meta").textContent = `Writer \u00b7 ${lines} lignes` + (m.essais > 1 ? ` \u00b7 version ${m.essais}` : "");
 }
 
 function renderVerdict(v) {
@@ -994,14 +994,14 @@ function renderVerdict(v) {
   const panel = $("p-verdict");
   panel.querySelector(".p-icon").className = "p-icon tone-" + (ok ? "success" : "danger");
   panel.querySelector(".p-icon").replaceChildren(iconEl(ok ? "shield-ok" : "shield-ko"));
-  $("verdict-meta").textContent = ok ? "Security · Approuvé"
-    : `Security · Refusé${issues.length ? ` · ${issues.length} problème${issues.length > 1 ? "s" : ""}` : ""}`;
+  $("verdict-meta").textContent = ok ? "Security \u00b7 Approuv\u00e9"
+    : `Security \u00b7 Refus\u00e9${issues.length ? ` \u00b7 ${issues.length} probl\u00e8me${issues.length > 1 ? "s" : ""}` : ""}`;
 
   const box = $("verdict");
   box.replaceChildren();
   const call = el("div", "callout tone-" + (ok ? "success" : "danger"));
   const txt = el("div");
-  txt.append(el("b", "", ok ? "Manifest approuvé. " : "Manifest refusé. "), document.createTextNode(v.resume || ""));
+  txt.append(el("b", "", ok ? "Manifest approuv\u00e9. " : "Manifest refus\u00e9. "), document.createTextNode(v.resume || ""));
   call.append(iconEl(ok ? "shield-ok" : "shield-ko"), txt);
   box.append(call);
   if (issues.length) {
@@ -1015,8 +1015,8 @@ function renderVerdict(v) {
 
 function renderCost(text) {
   richText($("cout"), text);
-  const price = String(text).match(/(?:[$€]\s?\d[\d\s.,]*\d|\d[\d\s.,]*\s?(?:\$|€|USD|EUR|dollars?|euros?)(?![a-z]))/i);
-  $("cout-meta").textContent = price ? `Cost · ≈ ${price[0].trim()} / mois` : "Cost";
+  const price = String(text).match(/(?:[$\u20ac]\s?\d[\d\s.,]*\d|\d[\d\s.,]*\s?(?:\$|\u20ac|USD|EUR|dollars?|euros?)(?![a-z]))/i);
+  $("cout-meta").textContent = price ? `Cost \u00b7 \u2248 ${price[0].trim()} / mois` : "Cost";
 }
 
 function showPanel(id, visible) { $(id).hidden = !visible; }
@@ -1032,7 +1032,7 @@ function render(m) {
     $("user-msg").hidden = !request;
     $("user-text").textContent = request;
     $("top-title").textContent = request || "Mission " + m.thread_id;
-    document.title = (request ? request.slice(0, 48) + (request.length > 48 ? "…" : "") : "Mission " + m.thread_id) + " · DevOps Copilot";
+    document.title = (request ? request.slice(0, 48) + (request.length > 48 ? "\u2026" : "") : "Mission " + m.thread_id) + " \u00b7 DevOps Copilot";
   }
 
   // Statut
@@ -1061,7 +1061,7 @@ function render(m) {
     $("live").replaceChildren();
     if (liveText) {
       const dots = el("span", "typing"); dots.append(el("i"), el("i"), el("i"));
-      $("live").append(dots, el("span", "", liveText + "…"));
+      $("live").append(dots, el("span", "", liveText + "\u2026"));
     }
   }
 
@@ -1092,17 +1092,17 @@ function renderOutcome(m) {
   let tone = null, icon = null, parts = null;
   if (m.status === "hors_sujet") {
     tone = "warning"; icon = "alert";
-    parts = [m.message || "Demande hors sujet : DevOps Copilot ne génère que des manifests Kubernetes. Reformulez votre demande."];
+    parts = [m.message || "Demande hors sujet : DevOps Copilot ne g\u00e9n\u00e8re que des manifests Kubernetes. Reformulez votre demande."];
   } else if (m.status === "terminee" && m.decision) {
     if (m.decision.startsWith("o")) {
       tone = "success"; icon = "save";
-      parts = ["Manifest enregistré dans ", ["code", "output/manifest.yaml"], " avec le rapport ", ["code", "output/rapport.md"], "."];
+      parts = ["Manifest enregistr\u00e9 dans ", ["code", "output/manifest.yaml"], " avec le rapport ", ["code", "output/rapport.md"], "."];
     } else {
-      tone = "neutral"; icon = "x"; parts = ["Mission refusée : rien n'a été enregistré."];
+      tone = "neutral"; icon = "x"; parts = ["Mission refus\u00e9e : rien n'a \u00e9t\u00e9 enregistr\u00e9."];
     }
   } else if (m.status === "terminee" && m.verdict && m.verdict.approuve !== true) {
     tone = "danger"; icon = "shield-ko";
-    parts = [`Échec : Security a refusé ${m.essais || MAX_ESSAIS} versions du manifest. Reformulez la demande et relancez.`];
+    parts = [`\u00c9chec : Security a refus\u00e9 ${m.essais || MAX_ESSAIS} versions du manifest. Reformulez la demande et relancez.`];
   }
   if (!changed("outcome", [tone, parts])) return;
   box.hidden = !tone;
@@ -1150,7 +1150,7 @@ function openMission(id) {
   $("top-title").textContent = (hist && hist.request) || "Mission " + id;
   setPill($("top-status"), { label: "Chargement", tone: "neutral" });
   $("live").hidden = false;
-  $("live").replaceChildren(el("span", "", "Chargement de la mission…"));
+  $("live").replaceChildren(el("span", "", "Chargement de la mission\u2026"));
   $("welcome").hidden = true;
   $("conversation").hidden = false;
   $("share").hidden = false;
@@ -1197,7 +1197,7 @@ async function launch(e) {
     $("request").value = ""; autosize();
     location.hash = m.thread_id;   // l'id de la mission est garde dans l'adresse de la page
   } catch (err) {
-    toast("Impossible de lancer la mission — " + err.message, "err");
+    toast("Impossible de lancer la mission \u2014 " + err.message, "err");
   } finally {
     setLaunching(false);
   }
@@ -1227,7 +1227,7 @@ async function decide(value) {
   try {
     await api("POST", "/missions/" + encodeURIComponent(id) + "/decision", { decision: value });
     $("decision").hidden = true;
-    toast(value === "o" ? "Manifest approuvé — enregistrement…" : "Mission refusée");
+    toast(value === "o" ? "Manifest approuv\u00e9 \u2014 enregistrement\u2026" : "Mission refus\u00e9e");
     startPolling();
   } catch (e) {
     setDecisionBusy(null);
@@ -1264,7 +1264,7 @@ function toggleSidebar() {
 // Suggestions
 // ============================================================================
 const SUGGESTIONS = [
-  { icon: "layers", title: "Deployment nginx sécurisé",
+  { icon: "layers", title: "Deployment nginx s\u00e9curis\u00e9",
     text: "Un Deployment nginx securise avec 3 replicas, et un Service ClusterIP qui expose le port 80 vers le port 8080 des pods." },
   { icon: "clock", title: "CronJob de sauvegarde",
     text: "Un CronJob qui lance chaque nuit a 2h une sauvegarde PostgreSQL avec l'image postgres:16, avec des limites CPU et memoire." },
@@ -1309,12 +1309,12 @@ $("toggle-side").onclick = toggleSidebar;
 $("side-close").onclick = closeDrawer;
 $("scrim").onclick = closeDrawer;
 $("search").addEventListener("input", renderHistory);
-$("share").onclick = async () => { if (await copyText(location.href)) toast("Lien de la mission copié"); };
+$("share").onclick = async () => { if (await copyText(location.href)) toast("Lien de la mission copi\u00e9"); };
 $("copy-manifest").onclick = async (e) => {
   e.preventDefault(); e.stopPropagation();
   const btn = e.currentTarget;
   if (await copyText(manifestText)) {
-    btn.classList.add("copied"); btn.lastElementChild.textContent = "Copié";
+    btn.classList.add("copied"); btn.lastElementChild.textContent = "Copi\u00e9";
     setTimeout(() => { btn.classList.remove("copied"); btn.lastElementChild.textContent = "Copier"; }, 1600);
   }
 };
